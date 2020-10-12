@@ -1,5 +1,8 @@
 package com.katevu.voxaudiobooks.ui
 
+import android.media.AudioAttributes
+import android.media.MediaPlayer
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -7,7 +10,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
@@ -85,6 +88,7 @@ class BookDetailsFragment() : Fragment() {
             return TrackListHolder(view)
         }
 
+        @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             val track = tracks[position]
             holder as TrackListHolder
@@ -101,19 +105,34 @@ class BookDetailsFragment() : Fragment() {
      */
     private inner class TrackListHolder(view: View) : RecyclerView.ViewHolder(view), View.OnClickListener {
         private val trackTitle = itemView.findViewById<TextView>(R.id.trackTitle)
-
+        private lateinit var trackUrl: String
         init {
             itemView.setOnClickListener(this)
         }
         /**
          * Binding data
          */
-        fun bind(trackTitleValue: String) {
-            trackTitle.text = urlText.plus(trackTitleValue)
+        @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+        fun bind(trackUrl: String) {
+            this.trackUrl = trackUrl
+            trackTitle.text = urlText.plus(trackUrl)
         }
 
+        @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onClick(p0: View?) {
-            Toast.makeText(context, "Click on track", Toast.LENGTH_LONG).show()
+
+            val url = urlText.plus(trackUrl)
+            val mediaPlayer: MediaPlayer? = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .build()
+                )
+                setDataSource(url)
+                prepare() // might take long! (for buffering, etc)
+                start()
+            }
         }
     }
 
