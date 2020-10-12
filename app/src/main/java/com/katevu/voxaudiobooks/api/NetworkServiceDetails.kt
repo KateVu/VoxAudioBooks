@@ -5,17 +5,14 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 
-private const val URL = "https://raw.githubusercontent.com/"
-private const val URL1 = "https://librivox.org/api/feed/audiobooks/"
-
-class NetworkService {
+class NetworkServiceDetails (val urlDetails: String) {
 
     val voxBooksService: VoxBooksService
 
     init {
 
         val retrofit = Retrofit.Builder()
-            .baseUrl(URL1)
+            .baseUrl(urlDetails)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
         voxBooksService = retrofit.create(VoxBooksService::class.java)
@@ -26,8 +23,8 @@ class NetworkService {
  * A public Api object that exposes the lazy-initialized Retrofit service
  */
 
-interface VoxBooksService {
-    @GET("?format=json")
-    suspend fun getAllBooks(): BooksResponse
+interface VoxBookService {
+    @GET("/")
+    suspend fun getBook(): BooksResponse
 }
 
