@@ -13,7 +13,6 @@ class BookListViewModel : ViewModel() {
     private val TAG = "BookListViewModel"
 
     private val _listBooks = MutableLiveData<List<Book>>()
-
     val listBooks: LiveData<List<Book>>
         get() = _listBooks
 

@@ -1,4 +1,6 @@
 package com.katevu.voxaudiobooks.models
 
-class BookDetails {
-}
+data class BookDetails (var bookID: String = "",
+                        var bookThumbnail: String = "",
+                        var bookCover: String = "",
+                        var listTracks: MutableList<String> = ArrayList<String>())

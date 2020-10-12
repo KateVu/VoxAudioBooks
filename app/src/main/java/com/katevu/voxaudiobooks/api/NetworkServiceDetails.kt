@@ -1,30 +1,25 @@
 package com.katevu.voxaudiobooks.api
 
-import com.katevu.voxaudiobooks.models.BooksResponse
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.converter.scalars.ScalarsConverterFactory
 import retrofit2.http.GET
+import retrofit2.http.Path
 
-class NetworkServiceDetails (val urlDetails: String) {
+class NetworkServiceDetails (val urlText: String) {
 
-    val voxBooksService: VoxBooksService
+    val voxBookService: VoxBookService
 
     init {
-
         val retrofit = Retrofit.Builder()
-            .baseUrl(urlDetails)
-            .addConverterFactory(GsonConverterFactory.create())
+            .baseUrl(urlText)
+            .addConverterFactory(ScalarsConverterFactory.create())
             .build()
-        voxBooksService = retrofit.create(VoxBooksService::class.java)
+        voxBookService = retrofit.create(VoxBookService::class.java)
     }
 }
 
-/**
- * A public Api object that exposes the lazy-initialized Retrofit service
- */
-
 interface VoxBookService {
-    @GET("/")
-    suspend fun getBook(): BooksResponse
+    @GET("{urlDetails}")
+    suspend fun getBookDetails(@Path("urlDetails") urlDetails: String): String
 }
 

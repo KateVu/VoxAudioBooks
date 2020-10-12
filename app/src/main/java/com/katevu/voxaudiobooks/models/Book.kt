@@ -15,7 +15,7 @@ data class Book (
             else -> {
                 var string: MutableList<String> = originUrl.split('/') as MutableList<String>
                 string.removeLast()
-                var url = string.joinToString('/'.toString())
+                var url = string.joinToString('/'.toString()).plus("/")
                 url.replaceFirst("http", "https")
             }
         }
@@ -29,10 +29,7 @@ data class Book (
                 else -> {
                     var string: MutableList<String> = originUrl.split('/') as MutableList<String>
                     string.removeLast()
-                    val path = string.last().plus("_files.xml")
-                    string.add(path)
-                    var url = string.joinToString('/'.toString())
-                    url.replaceFirst("http", "https")
+                    string.last().plus("_files.xml")
                 }
             }
         }
