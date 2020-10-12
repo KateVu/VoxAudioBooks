@@ -6,4 +6,6 @@ data class Book (
     var title: String = "",
     var id: String = "",
     @SerializedName("url_zip_file") var urlText: String = ""
+
+
 )

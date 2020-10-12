@@ -1,22 +1,34 @@
 package com.katevu.voxaudiobooks.models
 
+import android.util.Log
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.katevu.voxaudiobooks.api.NetworkService
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.launch
 
-@ExperimentalCoroutinesApi
-@FlowPreview
-class BookListViewModel: ViewModel() {
-//class BookListViewModel : ViewModel() {
+class BookListViewModel : ViewModel() {
 
     private val TAG = "BookListViewModel"
 
-    var listBooks: LiveData<List<Book>>
+    private val _listBooks = MutableLiveData<List<Book>>()
 
+    val listBooks: LiveData<List<Book>>
+        get() = _listBooks
 
     init {
-        listBooks = NetworkService().allBooks()
+        allBooks()
+    }
+
+    fun allBooks() {
+        viewModelScope.launch {
+            try {
+                val fetchResult = NetworkService().voxBooksService.getAllBooks()
+                _listBooks.value = fetchResult.listBooks
+            } catch (e: Exception) {
+                Log.d(TAG, ".allBooks error: ${e.message}")
+            }
+        }
     }
 }
