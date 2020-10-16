@@ -24,6 +24,9 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
+import com.katevu.voxaudiobooks.models.Track
+import com.katevu.voxaudiobooks.ui.MEDIA
+import com.katevu.voxaudiobooks.ui.MEDIA_BASEURL
 import java.io.IOException
 import androidx.media.app.NotificationCompat as MediaNotificationCompat
 
@@ -55,7 +58,8 @@ class MediaPlayerService : Service(),
 
     //mediaPlayer and url
     private var mediaPlayer: MediaPlayer? = null
-    private var mediaUrl: String = ""
+    private var track = Track()
+    private var baseURL = ""
 
     //Used to pause/resume MediaPlayer
     private var resumePosition = 0
@@ -78,18 +82,31 @@ class MediaPlayerService : Service(),
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         try {
+            Log.d(TAG, ".onStartCommand called")
             //An audio file is passed to the service through putExtra();
-            mediaUrl = intent.extras!!.getString("media").toString()
+            if (intent.hasExtra(MEDIA)) {
+                Log.d(TAG, ".onStartCommand get MEDIA")
+                track = intent.extras!!.getParcelable(MEDIA)!!
+                Log.d(TAG, ".onStartCommand get track: $track")
+            }
+
+            if (intent.hasExtra(MEDIA_BASEURL)) {
+                baseURL = intent.extras!!.getString(MEDIA_BASEURL).toString()
+                Log.d(TAG, ".onStartCommand get track: $track")
+            }
+
+
         } catch (e: NullPointerException) {
+            Log.d(TAG, ".onStartCommand error")
             stopSelf()
         }
         //Request audio focus
-        if (requestAudioFocus() == false) {
+        if (!requestAudioFocus()) {
             //Could not gain focus
             stopSelf()
         }
 
-        if (!mediaUrl.isNullOrEmpty()) {
+        if (!track.trackUrl.isNullOrEmpty()) {
             if (mediaSessionManager == null) {
                 try {
                     initMediaSession()
@@ -98,6 +115,7 @@ class MediaPlayerService : Service(),
                     e.printStackTrace()
                     stopSelf()
                 }
+                Log.d(TAG, ".onStartCommand called")
                 buildNotification(PlaybackStatus.PLAYING)
             }
         }
@@ -182,7 +200,7 @@ class MediaPlayerService : Service(),
         super.onDestroy()
         if (mediaPlayer != null) {
             stopMedia();
-            mediaPlayer?.release();
+            mediaPlayer?.release()
         }
         removeAudioFocus();
     }
@@ -224,8 +242,9 @@ class MediaPlayerService : Service(),
                 .build()
         )
         try {
+            var trackUrl = baseURL.plus("/").plus(track.trackUrl)
             // Set the data source to the mediaFile location
-            mediaPlayer?.setDataSource(mediaUrl)
+            mediaPlayer?.setDataSource(trackUrl)
         } catch (e: IOException) {
             e.printStackTrace()
             stopSelf()

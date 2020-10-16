@@ -31,6 +31,9 @@ import com.squareup.picasso.Picasso
 import kotlinx.android.synthetic.main.list_item_track.view.*
 
 private const val BOOK_PARCEL = "book_parcel"
+internal const val MEDIA = "media"
+internal const val MEDIA_BASEURL = "base_url"
+
 
 class BookDetailsFragment() : Fragment() {
     val Broadcast_PLAY_NEW_AUDIO = "com.katevu.voxaudiobooks.ui.PlayNewAudio"
@@ -113,12 +116,15 @@ class BookDetailsFragment() : Fragment() {
         }
     }
 
-    private fun playAudio(media: String) {
+    private fun playAudio(track: Track) {
         //Check is service is active
         if (!serviceBound) {
+            Log.d(TAG, ".playAudio called")
             val playerIntent = Intent(context, MediaPlayerService::class.java)
-            playerIntent.putExtra("media", media)
-
+            playerIntent.apply {
+                putExtra(MEDIA,track)
+                putExtra(MEDIA_BASEURL, bookParcel.link)
+            }
             activity?.startService(playerIntent)
             activity?.bindService(playerIntent, serviceConnection, Context.BIND_AUTO_CREATE)
         } else {
@@ -146,7 +152,6 @@ class BookDetailsFragment() : Fragment() {
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             val track = tracks[position]
             holder as TrackListHolder
-            //holder.itemView.playButton.setOnClickListener(this)
             holder.bind(track)
         }
 
@@ -192,8 +197,8 @@ class BookDetailsFragment() : Fragment() {
                 val url = bookParcel.link.plus(track.trackUrl)
 //            Log.d(TAG, ".onClick called with url: $url")
                 bookDetailsViewModel.updateStatus(track.trackUrl)
+                playAudio(track)
                 notifyDataSetChanged()
-                playAudio(url)
             }
         }
     }
@@ -212,7 +217,7 @@ class BookDetailsFragment() : Fragment() {
 
 
     fun getDurationString (duration: String): String {
-        Log.d(TAG, ".getDurationString called")
+//        Log.d(TAG, ".getDurationString called")
         var result: String = ""
         try {
             val durationValue = duration.toDouble().toLong()
@@ -233,21 +238,21 @@ class BookDetailsFragment() : Fragment() {
             }
 
         } catch (e: NumberFormatException) {
-            Log.d(TAG, ".getDurationString catch error")
+//            Log.d(TAG, ".getDurationString catch error")
             result = "Time: ".plus(duration)
         }
         return result
     }
 
     fun getSize (size: String): String {
-        Log.d(TAG, ".getDurationString called")
+//        Log.d(TAG, ".getDurationString called")
         var result: String = ""
         try {
             val sizeValue = size.toDouble() * 0.000001
             val number2digites = Math.round(sizeValue * 100.0) / 100.0
             result = "Size: ".plus(number2digites.toString()).plus("M")
         } catch (e: NumberFormatException) {
-            Log.d(TAG, ".getSize catch error")
+//            Log.d(TAG, ".getSize catch error")
             result = "Size: ".plus(size).plus("M")
         }
         return result
