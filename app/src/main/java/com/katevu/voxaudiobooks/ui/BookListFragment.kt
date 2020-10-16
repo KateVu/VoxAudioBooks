@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.*
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -13,28 +14,31 @@ import androidx.recyclerview.widget.RecyclerView
 import com.katevu.voxaudiobooks.R
 import com.katevu.voxaudiobooks.models.Book
 import com.katevu.voxaudiobooks.models.BookListViewModel
+import com.katevu.voxaudiobooks.models.BookParcel
+import com.squareup.picasso.Picasso
 
 /**
  * A simple [Fragment] subclass.
  * Use the [BookListFragment.newInstance] factory method to
  * create an instance of this fragment.
  */
+internal val BASE_URL_IMAGE = "https://archive.org/services/get-item-image.php"
 
 class BookListFragment : Fragment() {
 
     interface Callbacks {
-        fun onBookSelected(urlText: String, urlDetails: String)
+        fun onBookSelected(bookParcel: BookParcel)
     }
 
     private val TAG = "BookListFragment"
     private lateinit var bookRecyclerView: RecyclerView
     private var adapter: BookListAdapter? = null
     private var callbacks: Callbacks? = null
+    private var bookParcel: BookParcel? = null
 
 //    private val bookListViewModel: bookListViewModel by lazy { ViewModelProvider(this).get(BookListViewModel::class.java) }
 
     private val bookListViewModel: BookListViewModel by viewModels()
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,7 +66,7 @@ class BookListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         bookListViewModel.listBooks.observe(viewLifecycleOwner, Observer { listBooks  ->
-            Log.d(TAG, "Response received: ${listBooks[0]}; basedURLText: ${listBooks[0].urlText}; detailsURL: ${listBooks[0].urlDetails}")
+//            Log.d(TAG, "Response received: ${listBooks[0]}; basedURLText: ${listBooks[0].link}; detailsURL: ${listBooks[0].urlDetails}")
             updateUI(listBooks)
         })
 
@@ -83,8 +87,8 @@ class BookListFragment : Fragment() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-            return super.onOptionsItemSelected(item)
-        }
+        return super.onOptionsItemSelected(item)
+    }
 
     private fun updateUI(books: List<Book>) {
         Log.d(TAG, ".updateUI called")
@@ -123,12 +127,16 @@ class BookListFragment : Fragment() {
     /**
      * BookListHolder
      */
-    private inner class BookListHolder(view: View) : RecyclerView.ViewHolder(view), View.OnClickListener {
+    private inner class BookListHolder(view: View) : RecyclerView.ViewHolder(view), View.OnLongClickListener {
         private lateinit var book: Book
         private val bookTitle = itemView.findViewById<TextView>(R.id.title)
+        private val bookDes = itemView.findViewById<TextView>(R.id.description)
+        private val bookTime = itemView.findViewById<TextView>(R.id.total_time)
+        private val bookThumbnail = itemView.findViewById<ImageView>(R.id.thumbnail)
+
 
         init {
-            itemView.setOnClickListener(this)
+            itemView.setOnLongClickListener(this)
         }
         /**
          * Binding data
@@ -136,12 +144,30 @@ class BookListFragment : Fragment() {
         fun bind(book: Book) {
             this.book = book
             bookTitle.text = this.book.title
+            bookDes.text = this.book.description
+            bookTime.text = "Total Time: ".plus(this.book.totaltime)
+
+            val linkImage = BASE_URL_IMAGE.plus("?identifier=").plus(book.identifier)
+
+            Picasso.get()
+                .load(linkImage)
+                .error(R.drawable.placeholder_image_icon_48dp)
+                .placeholder(R.drawable.placeholder_image_icon_48dp)
+                .into(bookThumbnail)
         }
 
-        override fun onClick(p0: View?) {
-            callbacks?.onBookSelected(book.urlText, book.urlDetails)
+//        override fun onClick(p0: View?) {
+//            Toast.makeText(context, "onClick called", Toast.LENGTH_LONG).show()
+////            Log.d(TAG, "book.link ${book.link}, bookquery: ${book.urlDetails}")
+////            callbacks?.onBookSelected(book.link, book.urlDetails)
+//        }
+
+        override fun onLongClick(p0: View?): Boolean {
+            Log.d(TAG, "book.link ${book.link}, bookquery: ${book.urlDetails}")
+            bookParcel = BookParcel(book.id, book.title, book.description, book.link, book.urlDetails, book.identifier, book.num_sections.toInt())
+            callbacks?.onBookSelected(bookParcel!!)
+            return true
         }
     }
 
 }
-

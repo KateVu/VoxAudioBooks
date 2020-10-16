@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import com.katevu.voxaudiobooks.R
+import com.katevu.voxaudiobooks.models.BookParcel
 
 class MainActivity : AppCompatActivity(), BookListFragment.Callbacks {
     private val TAG = "MainActivity"
@@ -22,9 +23,8 @@ class MainActivity : AppCompatActivity(), BookListFragment.Callbacks {
 
     }
 
-    override fun onBookSelected(urlText: String, urlDetails: String) {
-        Log.d(TAG, "MainActivity.onCrimeSelected: $urlText")
-        val fragment = BookDetailsFragment.newInstance(urlText, urlDetails)
+    override fun onBookSelected(bookParcel: BookParcel) {
+        val fragment = BookDetailsFragment.newInstance(bookParcel)
         supportFragmentManager
             .beginTransaction()
             .replace(R.id.fragment_container, fragment)

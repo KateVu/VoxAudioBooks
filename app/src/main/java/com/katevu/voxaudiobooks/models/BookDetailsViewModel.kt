@@ -11,18 +11,17 @@ import kotlinx.coroutines.launch
 class BookDetailsViewModel: ViewModel() {
     private val TAG = "BookDetailsViewModel"
 
-
     private var _bookDetails = MutableLiveData<BookDetails>()
     val bookDetails: LiveData<BookDetails>
         get() = _bookDetails
 
     fun getBook(urlText: String,urlDetails: String) {
-//        Log.d(TAG, ".getBook called with url: $urlText")
+//        Log.d(TAG, ".getBook called with baseurl: $urlText and query: $urlDetails")
         viewModelScope.launch {
             try {
-//                _bookDetails.value = NetworkServiceDetails(urlText).voxBookService.getBookDetails(urlDetails)
 
                 var result = NetworkServiceDetails(urlText).voxBookService.getBookDetails(urlDetails)
+//                Log.d(TAG, ".getBook call result: $result")
                 var parseXml = ParseXML()
                 if (parseXml.parse(result)) {
                     var resultXML = parseXml.book
@@ -38,4 +37,29 @@ class BookDetailsViewModel: ViewModel() {
         }
     }
 
+    fun getTrack(trackUrl: String): Track? {
+        return  _bookDetails.value?.listTracks?.firstOrNull { it.trackUrl == trackUrl }
+    }
+
+    fun getPlayTrack(): Track? {
+        return _bookDetails.value?.listTracks?.firstOrNull { it.isPlaying == true }
+    }
+
+    fun setStatus(trackUrl: String, isPlaying: Boolean) {
+        _bookDetails.value?.listTracks?.find {it.trackUrl ==  trackUrl }?.isPlaying = isPlaying
+    }
+
+    fun updateStatus(trackUrl: String) {
+        var currentTrack = getPlayTrack()
+        if (currentTrack != null) {
+            if (currentTrack.trackUrl == trackUrl) {
+                setStatus(trackUrl, false)
+            } else {
+                setStatus(currentTrack.trackUrl, false)
+                setStatus(trackUrl, true)
+            }
+        } else {
+            setStatus(trackUrl, true)
+        }
+    }
 }

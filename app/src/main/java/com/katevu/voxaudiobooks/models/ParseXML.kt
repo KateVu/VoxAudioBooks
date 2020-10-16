@@ -1,11 +1,16 @@
 package com.katevu.voxaudiobooks.models
 
-import android.util.Log
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
 
 class ParseXML {
     private val TAG = "ParseXML"
+    private val FIELD_FILE = "file"
+    private val FIELD_TRACK = "track"
+    private val FIELD_ALBUM = "album"
+    private val FIELD_TITLE = "title"
+    private val FIELD_LENGTH = "length"
+    private val FIELD_SIZE = "size"
 
     var book = BookDetails()
 
@@ -13,11 +18,14 @@ class ParseXML {
 //        Log.d(TAG, "parse called with $xmlData")
 
         var status = true
-        var inEntry = false
         var textValue = ""
         var field = ""
-        var tagAttribute: String = ""
-
+        var attributeName: String = ""
+        var attributeTrack: String = ""
+        var attributeAlbum: String = ""
+        var attributeTitle: String = ""
+        var attributeLength: String = ""
+        var attributeSize: String = ""
 
         try {
             var factory = XmlPullParserFactory.newInstance()
@@ -32,9 +40,10 @@ class ParseXML {
                 when (eventType) {
                     XmlPullParser.START_TAG -> {
                         //Log.d(TAG,"parse: Starting tag for $tagName")
-                        if ((tagName == "file") && (xpp.attributeCount > 0)){
-                            tagAttribute = xpp.getAttributeValue(0)
-//                            Log.d(TAG, "tagAttribute: $tagAttribute")
+                        when (tagName) {
+                            FIELD_FILE -> {
+                                if (xpp.attributeCount > 0) attributeName = xpp.getAttributeValue(0)
+                            }
                         }
                     }
 
@@ -43,28 +52,37 @@ class ParseXML {
                     XmlPullParser.END_TAG -> {
 //                        Log.d(TAG, "parse: Ending tag for $tagName")
                         when (tagName) {
-                            "file" -> {
+                            FIELD_FILE -> {
                                 when (field) {
-                                    "thumbnail" -> {
-                                        book.bookThumbnail = tagAttribute
-                                        Log.d(TAG, ".parse bookThumbnail: $tagAttribute")
+                                    "track" -> {
+                                        var track = Track(attributeTrack, attributeName, attributeTitle, attributeAlbum, attributeLength, attributeSize, false)
+                                        book.listTracks.add(track)
+//                                        Log.d(TAG, ".parseXML ${book.listTracks}")
                                     }
-                                    "bookCover" -> book.bookCover = tagAttribute
-                                    "track" -> book.listTracks.add(tagAttribute)
                                 }
-
-                                tagAttribute = ""
+                                attributeName = ""
+                                attributeTrack = ""
+                                attributeAlbum = ""
+                                attributeTitle = ""
+                                attributeLength = ""
+                                attributeSize = ""
                                 field = ""
                             }
-                            "format" -> {
-                                field = when (textValue) {
-                                    "JPEG" -> "bookCover"
-                                    "JPEG Thumb" -> "thumbnail"
-                                    else -> ""
-                                }
-                            }
-                            "track" -> {
+                            FIELD_TRACK -> {
+                                attributeTrack = textValue
                                 field = "track"
+                            }
+                            FIELD_ALBUM -> {
+                                attributeAlbum = textValue
+                            }
+                            FIELD_TITLE -> {
+                                attributeTitle = textValue
+                            }
+                            FIELD_LENGTH -> {
+                                attributeLength = textValue
+                            }
+                            FIELD_SIZE -> {
+                                attributeSize = textValue
                             }
                         }
                     }
@@ -73,17 +91,10 @@ class ParseXML {
                 //Nothing to do
                 eventType = xpp.next()
             }
-
-//            for (app in applications) {
-//                Log.d(TAG,"*****************************")
-//                Log.d(TAG, app.toString())
-//            }
-
         } catch (e: Exception) {
             e.printStackTrace()
             status = false
         }
-
         return status
     }
 }

@@ -25,7 +25,8 @@ class BookListViewModel : ViewModel() {
             try {
                 val fetchResult = NetworkService().voxBooksService.getAllBooks()
                 _listBooks.value = fetchResult.listBooks.filterNot {
-                    it._urlText.isBlank()
+                    it.url_zip_file.isBlank()
+                    it.id.isBlank()
                 }
             } catch (e: Exception) {
                 Log.d(TAG, ".allBooks error: ${e.message}")
