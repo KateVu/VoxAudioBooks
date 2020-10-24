@@ -11,6 +11,7 @@ import androidx.annotation.RequiresApi
 import androidx.recyclerview.widget.RecyclerView
 import com.katevu.voxaudiobooks.R
 import com.katevu.voxaudiobooks.models.Track
+import com.katevu.voxaudiobooks.utils.AudioState
 
 class TrackListAdapter(var tracks: List<Track>) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -54,21 +55,35 @@ class TrackListAdapter(var tracks: List<Track>) :
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         fun bind(track: Track) {
             this.track = track
-            val isPlaying = track.isPlaying
-            if (!isPlaying) {
-                playButton.setImageBitmap(
-                    BitmapFactory.decodeResource(
-                        itemView.context.resources,
-                        R.drawable.play_button_round
-                    )
+            playButton.setImageBitmap(
+                BitmapFactory.decodeResource(
+                    itemView.context.resources,
+                    R.drawable.play_button_round
                 )
-            } else {
-                playButton.setImageBitmap(
-                    BitmapFactory.decodeResource(
-                        itemView.context.resources,
-                        R.drawable.pause_button_round
+            )
+
+            when (track.playbackState) {
+                AudioState().IDLE ->
+                    playButton.setImageBitmap(
+                        BitmapFactory.decodeResource(
+                            itemView.context.resources,
+                            R.drawable.app_icon
+                        )
                     )
-                )
+                AudioState().PAUSE ->
+                    playButton.setImageBitmap(
+                        BitmapFactory.decodeResource(
+                            itemView.context.resources,
+                            R.drawable.play_button_round
+                        )
+                    )
+                AudioState().IDLE ->
+                    playButton.setImageBitmap(
+                        BitmapFactory.decodeResource(
+                            itemView.context.resources,
+                            R.drawable.pause_button_round
+                        )
+                    )
             }
             trackTitle.text = track.trackTitle
             trackLength.text = getDurationString(track.trackLength)
@@ -108,7 +123,7 @@ class TrackListAdapter(var tracks: List<Track>) :
             val number2digites = Math.round(sizeValue * 100.0) / 100.0
             number2digites.toString().plus("M")
         } catch (e: NumberFormatException) {
-    //            Log.d(TAG, ".getSize catch error")
+            //            Log.d(TAG, ".getSize catch error")
             size.plus("M")
         }
     }

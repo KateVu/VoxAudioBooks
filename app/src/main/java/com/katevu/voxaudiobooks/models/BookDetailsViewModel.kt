@@ -6,12 +6,15 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.katevu.voxaudiobooks.api.NetworkServiceDetails
+import com.katevu.voxaudiobooks.utils.AudioState
 import kotlinx.coroutines.launch
 
 class BookDetailsViewModel: ViewModel() {
     private val TAG = "BookDetailsViewModel"
 
     private var _bookDetails = MutableLiveData<BookDetails>()
+    var mActiveTrack: Track? = null
+    var mPendingPending: Track? = null
     val bookDetails: LiveData<BookDetails>
         get() = _bookDetails
 
@@ -37,16 +40,22 @@ class BookDetailsViewModel: ViewModel() {
         }
     }
 
-    fun getTrack(trackUrl: String): Track? {
-        return  _bookDetails.value?.listTracks?.firstOrNull { it.trackUrl == trackUrl }
+    fun getTrackIndex(trackUrl: String): Int? {
+        return  _bookDetails.value?.listTracks?.indexOfFirst { it.trackUrl == trackUrl }
     }
 
+    fun setTrack(trackUrl: String, newTrack: Track?) {
+        val index = getTrackIndex(trackUrl)
+        index?.let { newTrack?.let { it1 -> bookDetails.value?.listTracks?.set(it, it1) } }
+    }
+
+
     fun getPlayTrack(): Track? {
-        return _bookDetails.value?.listTracks?.firstOrNull { it.isPlaying == true }
+        return _bookDetails.value?.listTracks?.firstOrNull { it.playbackState == AudioState().PLAYING }
     }
 
     fun setStatus(trackUrl: String, isPlaying: Boolean) {
-        _bookDetails.value?.listTracks?.find {it.trackUrl ==  trackUrl }?.isPlaying = isPlaying
+        _bookDetails.value?.listTracks?.find {it.trackUrl ==  trackUrl }?.playbackState = AudioState().IDLE
     }
 
     fun updateStatus(trackUrl: String) {

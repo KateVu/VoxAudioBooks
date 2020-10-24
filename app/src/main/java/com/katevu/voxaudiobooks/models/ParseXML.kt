@@ -57,7 +57,7 @@ class ParseXML {
                             FIELD_FILE -> {
                                 when (field) {
                                     "track" -> {
-                                        var track = Track("bookCover", "baseURl", attributeTrack, attributeName, attributeTitle, attributeAlbum, attributeArtist, attributeLength, attributeSize, false)
+                                        var track = Track("bookCover", "baseURl", attributeTrack, attributeName, attributeTitle, attributeAlbum, attributeArtist, attributeLength, attributeSize, 0)
                                         book.listTracks.add(track)
 //                                        Log.d(TAG, ".parseXML ${book.listTracks}")
                                     }

@@ -19,6 +19,5 @@ data class Track(
     var trackArtist: String = "",
     var trackLength: String = "",
     var trackSize: String = "",
-    var isPlaying: Boolean = false
+    var playbackState: Int = 0
 ): Parcelable
-

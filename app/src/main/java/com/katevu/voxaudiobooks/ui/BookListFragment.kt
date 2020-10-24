@@ -96,7 +96,7 @@ class BookListFragment : Fragment(),
         bookRecyclerView.adapter = adapter
     }
 
-    override fun onItemClick(view: View, position: Int) {
+    override fun onItemClick(view: View?, position: Int) {
 //        Log.d(TAG, "onItemClick called")
         val bookParcel = adapter?.getBook(position)
         callbacks?.onBookSelected(bookParcel!!)

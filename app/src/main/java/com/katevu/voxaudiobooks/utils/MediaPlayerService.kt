@@ -31,6 +31,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.net.URL
+import java.util.*
 import androidx.media.app.NotificationCompat as MediaNotificationCompat
 
 
@@ -75,6 +76,9 @@ class MediaPlayerService : Service(),
     private var notificationManager: NotificationManager? = null
     private var notificationChannel: NotificationChannel? = null
 
+    private val mListeners: List<OnMediaPlayerServiceListener> = ArrayList()
+
+
     //AudioPlayer notification ID
     override fun onBind(p0: Intent?): IBinder? {
         return binder;
@@ -82,25 +86,47 @@ class MediaPlayerService : Service(),
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+        Log.d(TAG, ".onStartCommand called")
+
         try {
+            Log.d(TAG, ".onStartCommand get track")
             //An audio file is passed to the service through putExtra();
             if (intent.hasExtra(MEDIA)) {
-//                Log.d(TAG, ".onStartCommand get MEDIA")
+                Log.d(TAG, ".onStartCommand get MEDIA")
                 track = intent.extras!!.getParcelable(MEDIA)!!
-//                Log.d(TAG, ".onStartCommand get track: $track")
+                Log.d(TAG, ".onStartCommand get track: $track")
             }
 
         } catch (e: NullPointerException) {
             Log.d(TAG, ".onStartCommand error")
             stopSelf()
         }
+        val action = intent.action
         //Request audio focus
         if (!requestAudioFocus()) {
             //Could not gain focus
             stopSelf()
         }
+//        /**
+//         * Init
+//         */
+//        if (mediaSessionManager == null) {
+//            try {
+//                initMediaSession()
+//            } catch (e: RemoteException) {
+//                e.printStackTrace()
+//                stopSelf()
+//            }
+//        }
 
-        if (!track.trackUrl.isNullOrEmpty()) {
+        // playing or pausing different audio and this is about to start a new audio
+        if (action == null && mediaPlayer != null) {
+            stopMedia()
+            Log.d(TAG, ".onStartCommand called action: $action")
+            mediaSessionManager = null
+        }
+
+        if (track.trackUrl.isNotEmpty()) {
             if (mediaSessionManager == null) {
                 try {
                     initMediaSession()
@@ -111,8 +137,11 @@ class MediaPlayerService : Service(),
                 }
                 Log.d(TAG, ".onStartCommand called")
                 buildNotification(PlaybackStatus.PLAYING)
+                for (listener in mListeners) listener.onMediaStartNew()
             }
         }
+
+        Log.d(TAG, ".onStartCommand ends")
 
         handleIncomingActions(intent)
         return super.onStartCommand(intent, flags, startId)
@@ -273,13 +302,13 @@ class MediaPlayerService : Service(),
                     Log.d(TAG, ".onPlay called")
                     super.onPlay()
                     resumeMedia()
-                    buildNotification(PlaybackStatus.PLAYING);
+                    buildNotification(PlaybackStatus.PLAYING)
                 }
 
                 override fun onPause() {
                     super.onPause()
                     pauseMedia()
-                    buildNotification(PlaybackStatus.PAUSED);
+                    buildNotification(PlaybackStatus.PAUSED)
 
                 }
 
@@ -374,6 +403,7 @@ class MediaPlayerService : Service(),
                 playbackAction.action = ACTION_PLAY
                 Log.d(TAG, ".playBackAction call with ACTION_PLAY")
                 return PendingIntent.getService(this, actionNumber, playbackAction, 0)
+
             }
             1 -> {
                 // Pause
@@ -398,27 +428,27 @@ class MediaPlayerService : Service(),
     }
 
 
-    private fun playMedia() {
+    fun playMedia() {
         if (!mediaPlayer!!.isPlaying) {
             mediaPlayer!!.start()
         }
     }
 
-    private fun stopMedia() {
+    fun stopMedia() {
         if (mediaPlayer == null) return
         if (mediaPlayer!!.isPlaying) {
             mediaPlayer!!.stop()
         }
     }
 
-    private fun pauseMedia() {
+    fun pauseMedia() {
         if (mediaPlayer!!.isPlaying) {
             mediaPlayer!!.pause()
             resumePosition = mediaPlayer!!.currentPosition
         }
     }
 
-    private fun resumeMedia() {
+    fun resumeMedia() {
         if (!mediaPlayer!!.isPlaying) {
             mediaPlayer!!.seekTo(resumePosition)
             mediaPlayer!!.start()
@@ -445,6 +475,7 @@ class MediaPlayerService : Service(),
 
         //Build a new notification according to the current state of the MediaPlayer
         if (playbackStatus == PlaybackStatus.PLAYING) {
+            Log.d(TAG, ".buildNotification called with playBackStatus: $playbackStatus")
             notificationAction = R.drawable.ic_media_pause
             //create the pause action
             play_pauseAction = playbackAction(1)
@@ -460,14 +491,16 @@ class MediaPlayerService : Service(),
         }
 
         // Build the notification
-        Log.d(TAG, "mediaSessnToken: ${mediaSession!!.getSessionToken()}")
+//        Log.d(TAG, "mediaSessnToken: ${mediaSession!!.getSessionToken()}")
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             // Show controls on lock screen even when user hides sensitive content.
             .setShowWhen(false)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSmallIcon(com.katevu.voxaudiobooks.R.drawable.earphone)
             // Add media control buttons that invoke
-            .addAction(notificationAction, "Pause", play_pauseAction) // #1
+            .addAction(android.R.drawable.ic_media_previous, "prev", playbackAction(2))
+            .addAction(notificationAction, "Play/Pause", play_pauseAction) // #1
+            .addAction(android.R.drawable.ic_media_next, "next", playbackAction(3))
             .setStyle(
                 MediaNotificationCompat.MediaStyle()
                     .setMediaSession(mediaSession!!.sessionToken)
@@ -506,17 +539,37 @@ class MediaPlayerService : Service(),
     private fun handleIncomingActions(playbackAction: Intent?) {
         if (playbackAction == null || playbackAction.action == null) return
         val actionString = playbackAction.action
-        if (actionString.equals(ACTION_PLAY, ignoreCase = true)) {
-            transportControls!!.play()
-        } else if (actionString.equals(ACTION_PAUSE, ignoreCase = true)) {
-            transportControls!!.pause()
-        } else if (actionString.equals(ACTION_NEXT, ignoreCase = true)) {
-            transportControls!!.skipToNext()
-        } else if (actionString.equals(ACTION_PREVIOUS, ignoreCase = true)) {
-            transportControls!!.skipToPrevious()
-        } else if (actionString.equals(ACTION_STOP, ignoreCase = true)) {
-            transportControls!!.stop()
+        when {
+            actionString.equals(ACTION_PLAY, ignoreCase = true) -> {
+                transportControls!!.play()
+            }
+            actionString.equals(ACTION_PAUSE, ignoreCase = true) -> {
+                transportControls!!.pause()
+            }
+            actionString.equals(ACTION_NEXT, ignoreCase = true) -> {
+                transportControls!!.skipToNext()
+            }
+            actionString.equals(ACTION_PREVIOUS, ignoreCase = true) -> {
+                transportControls!!.skipToPrevious()
+            }
+            actionString.equals(ACTION_STOP, ignoreCase = true) -> {
+                transportControls!!.stop()
+            }
         }
+    }
+
+    interface OnMediaPlayerServiceListener {
+        fun onMediaStartNew()
+        fun onMediaPlay()
+        fun onMediaSkipToPrevious()
+        fun onMediaSkipToNext()
+        fun onMediaPrepared()
+        fun onMediaPause()
+        fun onMediaResume()
+        fun onMediaComplete()
+        fun onMediaStop()
+        fun onMediaBuffering(percent: Int)
+        fun onMediaError(what: Int, extra: Int)
     }
 
 

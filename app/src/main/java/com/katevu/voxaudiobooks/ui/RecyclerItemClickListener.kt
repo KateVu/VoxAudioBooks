@@ -12,7 +12,7 @@ class RecyclerItemClickListener(context: Context?, recyclerView: RecyclerView, p
     private val TAG = "RecyclerItemClickLis"
 
     interface OnRecyclerClickListener {
-        fun onItemClick (view: View, position: Int)
+        fun onItemClick (view: View?, position: Int)
     }
 
     private val gestureDetector = GestureDetectorCompat(context, object: GestureDetector.SimpleOnGestureListener() {
