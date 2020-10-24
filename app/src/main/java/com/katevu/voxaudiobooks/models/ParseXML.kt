@@ -11,6 +11,7 @@ class ParseXML {
     private val FIELD_TITLE = "title"
     private val FIELD_LENGTH = "length"
     private val FIELD_SIZE = "size"
+    private val FIELD_ARTIST = "artist"
 
     var book = BookDetails()
 
@@ -20,12 +21,13 @@ class ParseXML {
         var status = true
         var textValue = ""
         var field = ""
-        var attributeName: String = ""
-        var attributeTrack: String = ""
-        var attributeAlbum: String = ""
-        var attributeTitle: String = ""
-        var attributeLength: String = ""
-        var attributeSize: String = ""
+        var attributeName = ""
+        var attributeTrack = ""
+        var attributeAlbum = ""
+        var attributeArtist = ""
+        var attributeTitle = ""
+        var attributeLength = ""
+        var attributeSize = ""
 
         try {
             var factory = XmlPullParserFactory.newInstance()
@@ -55,7 +57,7 @@ class ParseXML {
                             FIELD_FILE -> {
                                 when (field) {
                                     "track" -> {
-                                        var track = Track(attributeTrack, attributeName, attributeTitle, attributeAlbum, attributeLength, attributeSize, false)
+                                        var track = Track("bookCover", "baseURl", attributeTrack, attributeName, attributeTitle, attributeAlbum, attributeArtist, attributeLength, attributeSize, false)
                                         book.listTracks.add(track)
 //                                        Log.d(TAG, ".parseXML ${book.listTracks}")
                                     }
@@ -63,6 +65,7 @@ class ParseXML {
                                 attributeName = ""
                                 attributeTrack = ""
                                 attributeAlbum = ""
+                                attributeArtist = ""
                                 attributeTitle = ""
                                 attributeLength = ""
                                 attributeSize = ""
@@ -74,6 +77,10 @@ class ParseXML {
                             }
                             FIELD_ALBUM -> {
                                 attributeAlbum = textValue
+                            }
+
+                            FIELD_ARTIST -> {
+                                attributeArtist = textValue
                             }
                             FIELD_TITLE -> {
                                 attributeTitle = textValue

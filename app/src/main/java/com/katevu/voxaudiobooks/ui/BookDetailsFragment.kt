@@ -1,13 +1,14 @@
 package com.katevu.voxaudiobooks.ui
 
+import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -32,8 +33,6 @@ import kotlinx.android.synthetic.main.list_item_track.view.*
 
 private const val BOOK_PARCEL = "book_parcel"
 internal const val MEDIA = "media"
-internal const val MEDIA_BASEURL = "base_url"
-
 
 class BookDetailsFragment() : Fragment() {
     val Broadcast_PLAY_NEW_AUDIO = "com.katevu.voxaudiobooks.ui.PlayNewAudio"
@@ -45,6 +44,7 @@ class BookDetailsFragment() : Fragment() {
     private lateinit var bookCover: ImageView
     private lateinit var bookTitle: TextView
     private lateinit var bookDescription: TextView
+    private lateinit var bookAuthor: TextView
 
     private lateinit var adapter: TrackListAdapter
 
@@ -54,7 +54,7 @@ class BookDetailsFragment() : Fragment() {
     private var bookParcel = BookParcel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        Log.d(TAG, "onCreate called")
+//        Log.d(TAG, "onCreate called")
         super.onCreate(savedInstanceState)
 
         if (arguments != null) bookParcel = arguments?.getParcelable(BOOK_PARCEL)!!
@@ -66,13 +66,14 @@ class BookDetailsFragment() : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        Log.d(TAG, ".onCreateView called")
+//        Log.d(TAG, ".onCreateView called")
         // Inflate the layout for this fragment
         val view =  inflater.inflate(R.layout.fragment_book_details, container, false)
 
         bookCover = view.findViewById(R.id.imageBookCover)
         bookTitle = view.findViewById(R.id.book_details_title)
         bookDescription = view.findViewById(R.id.book_details_description)
+        bookAuthor = view.findViewById(R.id.book_details_author)
 
         updateUI(bookParcel)
         trackRecyclerView = view.findViewById(R.id.track_recycler_view) as RecyclerView
@@ -84,16 +85,42 @@ class BookDetailsFragment() : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         bookDetailsViewModel.bookDetails.observe(viewLifecycleOwner, { book ->
-            Log.d(TAG, "Book Details: $book")
+//            Log.d(TAG, "Book Details: $book")
             adapter = TrackListAdapter(book.listTracks)
             trackRecyclerView.adapter = adapter
         })
 
     }
 
+    override fun onSaveInstanceState(savedInstanceState: Bundle) {
+        savedInstanceState.putBoolean("ServiceState", serviceBound)
+        super.onSaveInstanceState(savedInstanceState)
+    }
+
+
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        super.onActivityCreated(savedInstanceState)
+        savedInstanceState?.let {
+            serviceBound = savedInstanceState.getBoolean("ServiceState")
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        if (serviceBound) {
+            activity?.unbindService(serviceConnection)
+            //service is active
+            player?.stopSelf()
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
     private fun updateUI(bookParcel: BookParcel) {
         bookTitle.text = bookParcel.title
         bookDescription.text = bookParcel.description
+        bookAuthor.text = "by ".plus(bookParcel.authors.first().first_name).plus(" ").plus(bookParcel.authors.first().last_name)
+
         val linkImage = BASE_URL_IMAGE.plus("?identifier=").plus(bookParcel.identifier)
         Picasso.get()
             .load(linkImage)
@@ -104,7 +131,7 @@ class BookDetailsFragment() : Fragment() {
     //Binding this Client to the AudioPlayer Service
     private val serviceConnection: ServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
-            // We've bound to LocalService, cast the IBinder and get LocalService instance
+            // bound to LocalService, cast the IBinder and get LocalService instance
             val binder = service as LocalBinder
             player = binder.getService()
             serviceBound = true
@@ -119,11 +146,13 @@ class BookDetailsFragment() : Fragment() {
     private fun playAudio(track: Track) {
         //Check is service is active
         if (!serviceBound) {
-            Log.d(TAG, ".playAudio called")
+//            Log.d(TAG, ".playAudio called")
             val playerIntent = Intent(context, MediaPlayerService::class.java)
             playerIntent.apply {
-                putExtra(MEDIA,track)
-                putExtra(MEDIA_BASEURL, bookParcel.link)
+                val linkImage = BASE_URL_IMAGE.plus("?identifier=").plus(bookParcel.identifier)
+                track.bookCover = linkImage
+                track.baseUrl = bookParcel.link
+                putExtra(MEDIA, track)
             }
             activity?.startService(playerIntent)
             activity?.bindService(playerIntent, serviceConnection, Context.BIND_AUTO_CREATE)
@@ -137,6 +166,18 @@ class BookDetailsFragment() : Fragment() {
             activity?.sendBroadcast(broadcastIntent)
         }
     }
+
+    companion object {
+        fun newInstance(bookParcel: BookParcel): BookDetailsFragment {
+            val args: Bundle = Bundle().apply {
+                putParcelable(BOOK_PARCEL, bookParcel)
+            }
+            return BookDetailsFragment().apply {
+                arguments = args
+            }
+        }
+    }
+
 
 
     private inner class TrackListAdapter(var tracks: List<Track>) :
@@ -183,9 +224,9 @@ class BookDetailsFragment() : Fragment() {
                 this.track = track
                 val isPlaying = track.isPlaying
                 if (!isPlaying) {
-                    playButton.setImageDrawable(resources.getDrawable(R.drawable.play_button_round))
+                    playButton.setImageBitmap(BitmapFactory.decodeResource(itemView.context.resources, R.drawable.play_button_round))
                 } else {
-                    playButton.setImageDrawable(resources.getDrawable(R.drawable.pause_button_round))
+                    playButton.setImageBitmap(BitmapFactory.decodeResource(itemView.context.resources, R.drawable.pause_button_round))
                 }
                 trackTitle.text = track.trackTitle
                 trackLength.text = getDurationString(track.trackLength)
@@ -201,61 +242,46 @@ class BookDetailsFragment() : Fragment() {
                 notifyDataSetChanged()
             }
         }
-    }
 
-
-    companion object {
-        fun newInstance(bookParcel: BookParcel): BookDetailsFragment {
-            val args: Bundle = Bundle().apply {
-                putParcelable(BOOK_PARCEL, bookParcel)
-            }
-            return BookDetailsFragment().apply {
-                arguments = args
-            }
-        }
-    }
-
-
-    fun getDurationString (duration: String): String {
+        fun getDurationString(duration: String): String {
 //        Log.d(TAG, ".getDurationString called")
-        var result: String = ""
-        try {
-            val durationValue = duration.toDouble().toLong()
-            val hours = durationValue.toInt() / 3600
-            var remainder = durationValue.toInt() - hours * 3600
-            val mins = remainder / 60
-            remainder = remainder - mins * 60
-            val secs = remainder
+            var result = ""
+            try {
+                val durationValue = duration.toDouble().toLong()
+                val hours = durationValue.toInt() / 3600
+                var remainder = durationValue.toInt() - hours * 3600
+                val mins = remainder / 60
+                remainder -= mins * 60
+                val secs = remainder
 
-            if (hours != 0) {
-                result =  "Time: ".plus(hours.toString().plus(":").plus(mins.toString()).plus(":").plus(secs.toString()).plus("s"))
-            } else {
-                if (mins != 0) {
-                    result = "Time: ".plus(mins.toString().plus(":").plus(secs.toString()).plus("s"))
-                } else {
-                    result = "Time: ".plus(secs.toString().plus("s"))
+                result = when {
+                    (hours != 0) -> hours.toString().plus(":").plus(mins.toString()).plus(":").plus(
+                            secs.toString()
+                        ).plus("s")
+
+                    (mins != 0) -> mins.toString().plus(":").plus(secs.toString()).plus("s")
+
+                    else -> secs.toString().plus("s")
                 }
-            }
-
-        } catch (e: NumberFormatException) {
+            } catch (e: NumberFormatException) {
 //            Log.d(TAG, ".getDurationString catch error")
-            result = "Time: ".plus(duration)
+                result = duration.plus("s")
+            }
+            return result
         }
-        return result
-    }
 
-    fun getSize (size: String): String {
+        fun getSize(size: String): String {
 //        Log.d(TAG, ".getDurationString called")
-        var result: String = ""
-        try {
-            val sizeValue = size.toDouble() * 0.000001
-            val number2digites = Math.round(sizeValue * 100.0) / 100.0
-            result = "Size: ".plus(number2digites.toString()).plus("M")
-        } catch (e: NumberFormatException) {
+            var result: String = ""
+            try {
+                val sizeValue = size.toDouble() * 0.000001
+                val number2digites = Math.round(sizeValue * 100.0) / 100.0
+                result = number2digites.toString().plus("M")
+            } catch (e: NumberFormatException) {
 //            Log.d(TAG, ".getSize catch error")
-            result = "Size: ".plus(size).plus("M")
+                result = size.plus("M")
+            }
+            return result
         }
-        return result
     }
-
 }

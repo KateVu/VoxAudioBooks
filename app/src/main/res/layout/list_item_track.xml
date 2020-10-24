@@ -14,20 +14,20 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:layout_marginEnd="8dp"
+        android:background="@null"
         android:contentDescription="@string/play_button"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/play_button_round"
-        android:background="@null"/>
+        app:srcCompat="@drawable/play_button_round" />
 
     <TextView
         android:id="@+id/track_length"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="8dp"
         android:text="length"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintStart_toStartOf="@+id/track_title"
+        app:layout_constraintTop_toBottomOf="@+id/track_title" />
 
     <TextView
         android:id="@+id/track_size"
@@ -47,6 +47,6 @@
         android:textColor="@color/design_default_color_secondary_variant"
         android:textSize="16sp"
         android:textStyle="italic"
-        app:layout_constraintStart_toStartOf="@+id/track_length"
-        app:layout_constraintTop_toBottomOf="@+id/track_length" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>

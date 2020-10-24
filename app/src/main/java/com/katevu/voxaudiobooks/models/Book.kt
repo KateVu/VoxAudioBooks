@@ -5,13 +5,15 @@ import com.google.gson.annotations.SerializedName
 import kotlinx.android.parcel.Parcelize
 import org.jsoup.Jsoup
 
+
 data class Book(
     var id: String = "",
     var title: String = "",
     var url_zip_file: String = "",
     @SerializedName("description") var _description: String = "",
     var totaltime: String = "",
-    var num_sections: String = ""
+    var num_sections: String = "",
+    @SerializedName("authors") var authors: List<Author>,
 ) {
     val link
         get() = removeLastIndex(url_zip_file)
@@ -33,6 +35,7 @@ data class Book(
             }
         }
     }
+
     fun removeLastIndex(originUrl: String): String {
         return when (originUrl) {
             "" -> ""
@@ -44,7 +47,8 @@ data class Book(
             }
         }
     }
-    fun getIdentifier (originUrl: String): String {
+
+    fun getIdentifier(originUrl: String): String {
         return when (originUrl) {
             "" -> ""
             else -> {
@@ -58,10 +62,22 @@ data class Book(
 }
 
 @Parcelize
-data class BookParcel (var id: String = "",
-                       var title: String = "",
-                       var description: String = "",
-                       var link: String = "",
-                       var urlDetails: String = "",
-                       var identifier: String = "",
-                       var numSection: Int = 0): Parcelable
+data class Author(
+    var id: String = "",
+    var first_name: String = "",
+    var last_name: String = ""
+): Parcelable
+
+
+
+@Parcelize
+data class BookParcel(
+    var id: String = "",
+    var title: String = "",
+    var description: String = "",
+    var link: String = "",
+    var urlDetails: String = "",
+    var identifier: String = "",
+    var numSection: Int = 0,
+    var authors: List<Author> = emptyList()
+) : Parcelable

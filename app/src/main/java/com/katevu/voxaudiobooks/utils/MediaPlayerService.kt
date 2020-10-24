@@ -26,8 +26,11 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import com.katevu.voxaudiobooks.models.Track
 import com.katevu.voxaudiobooks.ui.MEDIA
-import com.katevu.voxaudiobooks.ui.MEDIA_BASEURL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.io.IOException
+import java.net.URL
 import androidx.media.app.NotificationCompat as MediaNotificationCompat
 
 
@@ -40,7 +43,6 @@ private const val CHANNEL_CODE: String = "Media"
 
 private const val NOTIFICATION_ID = 888
 private const val CHANNEL_ID = "com.katevu.voxaudiobooks.channel.main"
-private const val NOTIFICATION_CHANNEL_ID = "com.katevu.voxaudiobooks.notification.channel"
 
 private const val TAG = "MediaPlayerService"
 
@@ -59,7 +61,6 @@ class MediaPlayerService : Service(),
     //mediaPlayer and url
     private var mediaPlayer: MediaPlayer? = null
     private var track = Track()
-    private var baseURL = ""
 
     //Used to pause/resume MediaPlayer
     private var resumePosition = 0
@@ -82,19 +83,12 @@ class MediaPlayerService : Service(),
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         try {
-            Log.d(TAG, ".onStartCommand called")
             //An audio file is passed to the service through putExtra();
             if (intent.hasExtra(MEDIA)) {
-                Log.d(TAG, ".onStartCommand get MEDIA")
+//                Log.d(TAG, ".onStartCommand get MEDIA")
                 track = intent.extras!!.getParcelable(MEDIA)!!
-                Log.d(TAG, ".onStartCommand get track: $track")
+//                Log.d(TAG, ".onStartCommand get track: $track")
             }
-
-            if (intent.hasExtra(MEDIA_BASEURL)) {
-                baseURL = intent.extras!!.getString(MEDIA_BASEURL).toString()
-                Log.d(TAG, ".onStartCommand get track: $track")
-            }
-
 
         } catch (e: NullPointerException) {
             Log.d(TAG, ".onStartCommand error")
@@ -242,7 +236,7 @@ class MediaPlayerService : Service(),
                 .build()
         )
         try {
-            var trackUrl = baseURL.plus("/").plus(track.trackUrl)
+            var trackUrl = track.baseUrl.plus("/").plus(track.trackUrl)
             // Set the data source to the mediaFile location
             mediaPlayer?.setDataSource(trackUrl)
         } catch (e: IOException) {
@@ -314,30 +308,54 @@ class MediaPlayerService : Service(),
         mediaSession?.setMetadata(
             MediaMetadataCompat.Builder()
                 // Title.
-                .putString(MediaMetadata.METADATA_KEY_TITLE, "title")
+                .putString(MediaMetadata.METADATA_KEY_TITLE, track.trackTitle)
                 // Artist.
                 // Could also be the channel name or TV series.
-                .putString(MediaMetadata.METADATA_KEY_ARTIST, "artist")
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, track.trackArtist)
+                .putString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI, track.bookCover)
                 // Duration.
                 // If duration isn't set, such as for live broadcasts, then the progress
                 // indicator won't be shown on the seekbar.
-                .putLong(MediaMetadata.METADATA_KEY_DURATION, 10000) // 4
+                .putLong(
+                    MediaMetadata.METADATA_KEY_DURATION,
+                    getDurationLong(track.trackLength)
+                ) // 4
                 .build()
         )
     }
+
+
+    fun getDurationLong(duration: String): Long {
+//        Log.d(TAG, ".getDurationString called")
+        var result: Long = 0
+        try {
+            val durationValue = duration.toDouble().toLong()
+        } catch (e: NumberFormatException) {
+//            Log.d(TAG, ".getDurationString catch error")
+            result = 0
+        }
+        return result
+    }
+
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannel() {
         if (notificationChannel == null) {
             notificationChannel = NotificationChannel(
                 CHANNEL_ID,
-                "Media Playback",
+                "VoxAudioBooks",
                 NotificationManager.IMPORTANCE_HIGH
             )
             notificationChannel!!.setDescription("Media Playback Controls")
             notificationChannel!!.setShowBadge(false)
             notificationChannel!!.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC)
             notificationManager!!.createNotificationChannel(notificationChannel!!)
+
+//            notificationChannel.enableLights(true)
+//            notificationChannel.lightColor = Color.RED
+//            notificationChannel.enableVibration(true)
+//            notificationChannel.description = "VoxAudioBooks Notification channel"
+//            notificationManager.createNotificationChannel(notificationChannel)
         }
     }
 
@@ -361,7 +379,6 @@ class MediaPlayerService : Service(),
                 // Pause
                 playbackAction.action = ACTION_PAUSE
                 Log.d(TAG, ".playBackAction call with ACTION_PAUSE")
-
                 return PendingIntent.getService(this, actionNumber, playbackAction, 0)
             }
             2 -> {
@@ -422,9 +439,7 @@ class MediaPlayerService : Service(),
         PAUSED
     }
 
-
     private fun buildNotification(playbackStatus: PlaybackStatus) {
-
         var notificationAction = R.drawable.ic_media_pause //needs to be initialized
         var play_pauseAction: PendingIntent? = null
 
@@ -439,36 +454,53 @@ class MediaPlayerService : Service(),
             play_pauseAction = playbackAction(0)
         }
 
-        // TODO: Step 2.0 add style
-        val eggImage = BitmapFactory.decodeResource(
-            applicationContext.resources,
-            R.drawable.ic_dialog_email
-        )
-        val bigPicStyle = NotificationCompat.BigPictureStyle()
-            .bigPicture(eggImage)
-            .bigLargeIcon(null)
-        // TODO: Step 1.2 get an instance of NotificationCompat.Builder
+        //Create channel
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            createNotificationChannel()
+        }
+
         // Build the notification
         Log.d(TAG, "mediaSessnToken: ${mediaSession!!.getSessionToken()}")
-        val builder = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            // TODO: Step 1.3 set title, text and icon to builder
+        val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             // Show controls on lock screen even when user hides sensitive content.
             .setShowWhen(false)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setSmallIcon(R.drawable.ic_menu_directions)
+            .setSmallIcon(com.katevu.voxaudiobooks.R.drawable.earphone)
             // Add media control buttons that invoke
-            .addAction(R.drawable.ic_media_pause, "Pause", play_pauseAction) // #1
-            // TODO: Step 2.1 add style to builder
-            //.setStyle(bigPicStyle)
+            .addAction(notificationAction, "Pause", play_pauseAction) // #1
             .setStyle(
                 MediaNotificationCompat.MediaStyle()
                     .setMediaSession(mediaSession!!.sessionToken)
             )
-            .setContentTitle("Wonderful music")
-            .setContentText("My Awesome Band")
-            .setLargeIcon(eggImage)
+            .setContentTitle(track.trackTitle.toUpperCase())
+            .setContentText(track.trackArtist)
+            //.setLargeIcon(Picasso.get().load(linkCover).)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-        notificationManager!!.notify(NOTIFICATION_ID, builder.build())
+        applyImageUrl(notification, track.bookCover)
+        notificationManager!!.notify(NOTIFICATION_ID, notification.build())
+
+    }
+
+    fun applyImageUrl(
+        builder: NotificationCompat.Builder,
+        imageUrl: String
+    ) = runBlocking {
+        val url = URL(imageUrl)
+        withContext(Dispatchers.IO) {
+            try {
+                val input = url.openStream()
+                BitmapFactory.decodeStream(input)
+            } catch (e: IOException) {
+                null
+            }
+        }?.let { bitmap ->
+            builder.setLargeIcon(bitmap)
+//            val palette: Palette = Palette.from(bitmap).generate()
+//            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+//                builder.setColor(palette.getDominantColor(Color.BLACK))
+//                    .setColorized(true)
+//            }
+        }
     }
 
     private fun handleIncomingActions(playbackAction: Intent?) {
@@ -486,5 +518,6 @@ class MediaPlayerService : Service(),
             transportControls!!.stop()
         }
     }
+
 
 }

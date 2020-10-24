@@ -45,7 +45,6 @@ class BookListFragment : Fragment() {
         setHasOptionsMenu(true)
 
         Log.d(TAG, ".onCreate called")
-
     }
 
     override fun onCreateView(
@@ -62,11 +61,10 @@ class BookListFragment : Fragment() {
         return view
     }
 
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         bookListViewModel.listBooks.observe(viewLifecycleOwner, Observer { listBooks  ->
-//            Log.d(TAG, "Response received: ${listBooks[0]}; basedURLText: ${listBooks[0].link}; detailsURL: ${listBooks[0].urlDetails}")
+            Log.d(TAG, "Response received: ${listBooks[0].authors}")
             updateUI(listBooks)
         })
 
@@ -127,7 +125,7 @@ class BookListFragment : Fragment() {
     /**
      * BookListHolder
      */
-    private inner class BookListHolder(view: View) : RecyclerView.ViewHolder(view), View.OnLongClickListener {
+    private inner class BookListHolder(view: View) : RecyclerView.ViewHolder(view), View.OnClickListener {
         private lateinit var book: Book
         private val bookTitle = itemView.findViewById<TextView>(R.id.title)
         private val bookDes = itemView.findViewById<TextView>(R.id.description)
@@ -136,7 +134,7 @@ class BookListFragment : Fragment() {
 
 
         init {
-            itemView.setOnLongClickListener(this)
+            itemView.setOnClickListener(this)
         }
         /**
          * Binding data
@@ -145,7 +143,7 @@ class BookListFragment : Fragment() {
             this.book = book
             bookTitle.text = this.book.title
             bookDes.text = this.book.description
-            bookTime.text = "Total Time: ".plus(this.book.totaltime)
+            bookTime.text = this.book.totaltime.plus("s")
 
             val linkImage = BASE_URL_IMAGE.plus("?identifier=").plus(book.identifier)
 
@@ -156,17 +154,10 @@ class BookListFragment : Fragment() {
                 .into(bookThumbnail)
         }
 
-//        override fun onClick(p0: View?) {
-//            Toast.makeText(context, "onClick called", Toast.LENGTH_LONG).show()
-////            Log.d(TAG, "book.link ${book.link}, bookquery: ${book.urlDetails}")
-////            callbacks?.onBookSelected(book.link, book.urlDetails)
-//        }
-
-        override fun onLongClick(p0: View?): Boolean {
-            Log.d(TAG, "book.link ${book.link}, bookquery: ${book.urlDetails}")
-            bookParcel = BookParcel(book.id, book.title, book.description, book.link, book.urlDetails, book.identifier, book.num_sections.toInt())
+        override fun onClick(p0: View?) {
+//            Log.d(TAG, "book.link ${book.link}, bookquery: ${book.urlDetails}")
+            bookParcel = BookParcel(book.id, book.title, book.description, book.link, book.urlDetails, book.identifier, book.num_sections.toInt(), book.authors)
             callbacks?.onBookSelected(bookParcel!!)
-            return true
         }
     }
 

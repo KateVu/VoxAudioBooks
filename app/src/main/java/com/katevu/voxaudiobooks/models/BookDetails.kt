@@ -10,10 +10,13 @@ data class BookDetails(
 
 @Parcelize
 data class Track(
+    var bookCover: String = "",
+    var baseUrl: String = "",
     var trackNo: String = "",
     var trackUrl: String = "",
     var trackTitle: String = "",
     var trackAlbum: String = "",
+    var trackArtist: String = "",
     var trackLength: String = "",
     var trackSize: String = "",
     var isPlaying: Boolean = false
