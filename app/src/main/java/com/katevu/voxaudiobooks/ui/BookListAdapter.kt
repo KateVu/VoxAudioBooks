@@ -1,5 +1,6 @@
 package com.katevu.voxaudiobooks.ui
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,6 +12,7 @@ import com.katevu.voxaudiobooks.models.Book
 import com.katevu.voxaudiobooks.models.BookParcel
 import com.squareup.picasso.Picasso
 
+private const val TAG = "BookListAdapter"
 class BookListAdapter(var books: List<Book>) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
@@ -34,14 +36,16 @@ class BookListAdapter(var books: List<Book>) :
         if (books.isNotEmpty()) {
             val book = books[position]
             return BookParcel(
-                book.id,
+                book.guid,
                 book.title,
                 book.description,
                 book.link,
-                book.urlDetails,
+                book.pubDate,
+                book?.creator,
                 book.identifier,
-                book.num_sections.toInt(),
-                book.authors
+                book?.runtime,
+                book.totalTracks,
+                book.tracks
             )
         } else {
             return null
@@ -65,10 +69,10 @@ class BookListAdapter(var books: List<Book>) :
             this.book = book
             bookTitle.text = this.book.title
             bookDes.text = this.book.description
-            bookTime.text = this.book.totaltime.plus("s")
+            bookTime.text = this.book.pubDate
 
-            val linkImage = BASE_URL_IMAGE.plus("?identifier=").plus(book.identifier)
-
+            val linkImage = URL_COVER_LARGE_PREFIX.plus(book.identifier)
+            Log.d(TAG, "Cover image: $linkImage")
             Picasso.get()
                 .load(linkImage)
                 .error(R.drawable.placeholder_image_icon_48dp)

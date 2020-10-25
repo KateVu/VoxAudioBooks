@@ -24,8 +24,9 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
-import com.katevu.voxaudiobooks.models.Track
+import com.katevu.voxaudiobooks.models.MediaFile
 import com.katevu.voxaudiobooks.ui.MEDIA
+import com.katevu.voxaudiobooks.ui.URL_COVER_LARGE_PREFIX
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -42,8 +43,10 @@ private const val ACTION_NEXT: String = "com.katevu.voxaudiobooks.action.ACTION_
 private const val ACTION_STOP: String = "com.katevu.voxaudiobooks.action.ACTION_STOP"
 private const val CHANNEL_CODE: String = "Media"
 
-private const val NOTIFICATION_ID = 888
+private const val NOTIFICATION_ID = 8888
 private const val CHANNEL_ID = "com.katevu.voxaudiobooks.channel.main"
+private const val URL_AUDIO_LIBRIVOX = "https://archive.org/download/"
+
 
 private const val TAG = "MediaPlayerService"
 
@@ -61,7 +64,7 @@ class MediaPlayerService : Service(),
 
     //mediaPlayer and url
     private var mediaPlayer: MediaPlayer? = null
-    private var track = Track()
+    private var track = MediaFile()
 
     //Used to pause/resume MediaPlayer
     private var resumePosition = 0
@@ -76,10 +79,10 @@ class MediaPlayerService : Service(),
     private var notificationManager: NotificationManager? = null
     private var notificationChannel: NotificationChannel? = null
 
-    private val mListeners: MutableList<OnMediaPlayerServiceListener> = ArrayList<OnMediaPlayerServiceListener>()
+    //Call back to update list of track
+    private val mListeners: MutableList<OnMediaPlayerServiceListener> =
+        ArrayList<OnMediaPlayerServiceListener>()
 
-
-    //AudioPlayer notification ID
     override fun onBind(p0: Intent?): IBinder? {
         return binder;
     }
@@ -88,46 +91,43 @@ class MediaPlayerService : Service(),
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         Log.d(TAG, ".onStartCommand called")
 
-        try {
-            Log.d(TAG, ".onStartCommand get track")
-            //An audio file is passed to the service through putExtra();
-            if (intent.hasExtra(MEDIA)) {
-                Log.d(TAG, ".onStartCommand get MEDIA")
-                track = intent.extras!!.getParcelable(MEDIA)!!
-                Log.d(TAG, ".onStartCommand get track: $track")
-            }
-
-        } catch (e: NullPointerException) {
-            Log.d(TAG, ".onStartCommand error")
-            stopSelf()
-        }
-        val action = intent.action
         //Request audio focus
         if (!requestAudioFocus()) {
             //Could not gain focus
             stopSelf()
         }
 
+        var trackIntent: MediaFile? = null
+        if (intent.hasExtra(MEDIA)) {
+            Log.d(TAG, ".onStartCommand get MEDIA")
+            trackIntent = intent.extras!!.getParcelable(MEDIA)!!
+            Log.d(TAG, ".onStartCommand get track: $trackIntent")
+        }
+
+        val action = intent.action
+        if (mediaSessionManager == null) {
+            try {
+                initMediaSession()
+            } catch (e: RemoteException) {
+                e.printStackTrace()
+                stopSelf()
+            }
+        }
+
         // playing or pausing different audio and this is about to start a new audio
         if (action == null && mediaPlayer != null) {
             stopMedia()
-            Log.d(TAG, ".onStartCommand called action: $action")
-            mediaSessionManager = null
+            Log.d(TAG, ".onStartCommand called for new audio")
         }
 
-        if (track.trackUrl.isNotEmpty()) {
-            if (mediaSessionManager == null) {
-                try {
-                    initMediaSession()
-                    initMediaPlayer()
-                } catch (e: RemoteException) {
-                    e.printStackTrace()
-                    stopSelf()
-                }
-                Log.d(TAG, ".onStartCommand called")
-                buildNotification(PlaybackStatus.PLAYING)
-                for (listener in mListeners) listener.onMediaStartNew()
-            }
+        if (trackIntent != null) {
+            track = trackIntent
+            initMediaPlayer()
+            updateMetaData()
+
+            Log.d(TAG, ".onStartCommand called")
+            buildNotification(PlaybackStatus.PLAYING)
+            for (listener in mListeners) listener.onMediaStartNew()
         }
 
         Log.d(TAG, ".onStartCommand ends")
@@ -139,7 +139,6 @@ class MediaPlayerService : Service(),
     override fun onCreate() {
         super.onCreate()
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
     }
 
     override fun onCompletion(mMediaPlayer: MediaPlayer?) {
@@ -200,8 +199,8 @@ class MediaPlayerService : Service(),
                     initMediaPlayer()
                 } else {
                     (!mediaPlayer!!.isPlaying)
+                    mediaPlayer!!.start()
                 }
-                mediaPlayer!!.start()
                 mediaPlayer!!.setVolume(1.0f, 1.0f)
             }
             AudioManager.AUDIOFOCUS_LOSS -> {
@@ -231,11 +230,13 @@ class MediaPlayerService : Service(),
 
     private fun requestAudioFocus(): Boolean {
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
         val result = audioManager!!.requestAudioFocus(
             this,
             AudioManager.STREAM_MUSIC,
             AudioManager.AUDIOFOCUS_GAIN
         )
+
         return result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
     }
 
@@ -266,7 +267,9 @@ class MediaPlayerService : Service(),
                 .build()
         )
         try {
-            var trackUrl = track.baseUrl.plus("/").plus(track.trackUrl)
+            // url -> https://archive.org/download/[identifier]/[name]
+
+            val trackUrl = URL_AUDIO_LIBRIVOX.plus(track.identifier).plus("/").plus(track.name)
             // Set the data source to the mediaFile location
             mediaPlayer?.setDataSource(trackUrl)
         } catch (e: IOException) {
@@ -290,10 +293,8 @@ class MediaPlayerService : Service(),
             mediaSessionManager = getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
             //
             mediaSession = MediaSessionCompat(applicationContext, "AudioPlayer")
-            transportControls = mediaSession?.getController()?.getTransportControls()
-            mediaSession?.setActive(true)
-            mediaSession?.setFlags(MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS)
-
+            transportControls = mediaSession?.controller?.transportControls
+            mediaSession?.isActive = true
             updateMetaData()
 
             // Attach Callback to receive MediaSession updates
@@ -361,24 +362,39 @@ class MediaPlayerService : Service(),
         mediaSession?.setMetadata(
             MediaMetadataCompat.Builder()
                 // Title.
-                .putString(MediaMetadata.METADATA_KEY_TITLE, track.trackTitle)
+                .putString(MediaMetadata.METADATA_KEY_TITLE, track.title)
                 // Artist.
                 // Could also be the channel name or TV series.
-                .putString(MediaMetadata.METADATA_KEY_ARTIST, track.trackArtist)
-                .putString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI, track.bookCover)
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, track.artist)
+                .putString(
+                    MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
+                    URL_COVER_LARGE_PREFIX.plus(track.identifier)
+                )
                 // Duration.
                 // If duration isn't set, such as for live broadcasts, then the progress
                 // indicator won't be shown on the seekbar.
                 .putLong(
                     MediaMetadata.METADATA_KEY_DURATION,
-                    getDurationLong(track.trackLength)
-                ) // 4
+                    getDurationLong(track.length)
+                )
                 .build()
         )
     }
 
 
     fun getDurationLong(duration: String): Long {
+//        Log.d(TAG, ".getDurationString called")
+        var result: Long = 0
+        try {
+            val durationValue = duration.toDouble().toLong()
+        } catch (e: NumberFormatException) {
+//            Log.d(TAG, ".getDurationString catch error")
+            result = 0
+        }
+        return result
+    }
+
+    fun getmTimeLong(duration: String): Long {
 //        Log.d(TAG, ".getDurationString called")
         var result: Long = 0
         try {
@@ -459,8 +475,7 @@ class MediaPlayerService : Service(),
     }
 
     fun stopMedia() {
-        if (mediaPlayer == null) return
-        if (mediaPlayer!!.isPlaying) {
+        if ((mediaPlayer != null) && (mediaPlayer!!.isPlaying)) {
             mediaPlayer!!.stop()
         }
     }
@@ -529,11 +544,11 @@ class MediaPlayerService : Service(),
                 MediaNotificationCompat.MediaStyle()
                     .setMediaSession(mediaSession!!.sessionToken)
             )
-            .setContentTitle(track.trackTitle.toUpperCase())
-            .setContentText(track.trackArtist)
+            .setContentTitle(track.title.toUpperCase())
+            .setContentText(track.artist)
             //.setLargeIcon(Picasso.get().load(linkCover).)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-        applyImageUrl(notification, track.bookCover)
+        applyImageUrl(notification, URL_COVER_LARGE_PREFIX.plus(track.identifier))
         notificationManager!!.notify(NOTIFICATION_ID, notification.build())
 
     }

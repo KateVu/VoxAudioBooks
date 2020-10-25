@@ -1,12 +1,13 @@
 package com.katevu.voxaudiobooks.api
 
-import com.katevu.voxaudiobooks.models.BooksResponse
+import com.katevu.voxaudiobooks.models.RSS
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.converter.simplexml.SimpleXmlConverterFactory
 import retrofit2.http.GET
 
-private const val URL = "https://raw.githubusercontent.com/"
-private const val URL1 = "https://librivox.org/api/feed/audiobooks/"
+private const val URL1 = "https://archive.org/services/collection-rss.php/"
+private const val URL_ARCHIVE_LIBRIVOX = "https://archive.org/services/"
+
 
 class NetworkService {
 
@@ -15,8 +16,9 @@ class NetworkService {
     init {
 
         val retrofit = Retrofit.Builder()
-            .baseUrl(URL1)
-            .addConverterFactory(GsonConverterFactory.create())
+            .baseUrl(URL_ARCHIVE_LIBRIVOX)
+            //.addConverterFactory(ScalarsConverterFactory.create())
+            .addConverterFactory(SimpleXmlConverterFactory.create())
             .build()
         voxBooksService = retrofit.create(VoxBooksService::class.java)
     }
@@ -27,7 +29,7 @@ class NetworkService {
  */
 
 interface VoxBooksService {
-    @GET("?format=json")
-    suspend fun getAllBooks(): BooksResponse
+    @GET("collection-rss.php?collection=librivoxaudio")
+    suspend fun getAllBooks(): RSS
 }
 

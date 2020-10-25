@@ -10,10 +10,10 @@ import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.recyclerview.widget.RecyclerView
 import com.katevu.voxaudiobooks.R
-import com.katevu.voxaudiobooks.models.Track
+import com.katevu.voxaudiobooks.models.MediaFile
 import com.katevu.voxaudiobooks.utils.AudioState
 
-class TrackListAdapter(var tracks: List<Track>) :
+class TrackListAdapter(var tracks: List<MediaFile>) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -33,7 +33,7 @@ class TrackListAdapter(var tracks: List<Track>) :
         return tracks.size
     }
 
-    fun getTrack(position: Int): Track? {
+    fun getTrack(position: Int): MediaFile? {
         return if (tracks.isNotEmpty()) tracks[position] else null
     }
 
@@ -47,13 +47,13 @@ class TrackListAdapter(var tracks: List<Track>) :
         private val trackLength = itemView.findViewById<TextView>(R.id.track_length)
         private val trackSize = itemView.findViewById<TextView>(R.id.track_size)
 
-        private lateinit var track: Track
+        private lateinit var track: MediaFile
 
         /**
          * Binding data
          */
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-        fun bind(track: Track) {
+        fun bind(track: MediaFile) {
             this.track = track
             playButton.setImageBitmap(
                 BitmapFactory.decodeResource(
@@ -85,9 +85,9 @@ class TrackListAdapter(var tracks: List<Track>) :
                         )
                     )
             }
-            trackTitle.text = track.trackTitle
-            trackLength.text = getDurationString(track.trackLength)
-            trackSize.text = getSize(track.trackSize)
+            trackTitle.text = track.title
+            trackLength.text = getDurationString(track.length)
+            trackSize.text = getSize(track.size)
         }
     }
 

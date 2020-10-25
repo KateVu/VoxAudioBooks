@@ -4,10 +4,12 @@ import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.*
+import android.widget.ProgressBar
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.snackbar.Snackbar
 import com.katevu.voxaudiobooks.R
 import com.katevu.voxaudiobooks.models.Book
 import com.katevu.voxaudiobooks.models.BookListViewModel
@@ -18,7 +20,7 @@ import com.katevu.voxaudiobooks.models.BookParcel
  * Use the [BookListFragment.newInstance] factory method to
  * create an instance of this fragment.
  */
-internal const val BASE_URL_IMAGE = "https://archive.org/services/get-item-image.php"
+internal const val URL_COVER_LARGE_PREFIX = "https://archive.org/services/get-item-image.php?identifier="
 
 class BookListFragment : Fragment(),
     RecyclerItemClickListener.OnRecyclerClickListener{
@@ -51,6 +53,9 @@ class BookListFragment : Fragment(),
         // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_book_list, container, false)
 
+        val spinner = view.findViewById(R.id.spinner) as ProgressBar
+        spinner.visibility= View.VISIBLE
+
         bookRecyclerView =
             view.findViewById(R.id.book_recycler_view) as RecyclerView
         bookRecyclerView.layoutManager = LinearLayoutManager(context)
@@ -61,15 +66,33 @@ class BookListFragment : Fragment(),
                 this
             )
         )
+
+        bookListViewModel.spinner.observe(viewLifecycleOwner) { show ->
+            spinner.visibility = if (show) View.VISIBLE else View.GONE
+        }
+
+        // Show a snackbar whenever the [ViewModel.snackbar] is updated a non-null value
+        bookListViewModel.snackbar.observe(viewLifecycleOwner) { text ->
+            text?.let {
+                Snackbar.make(view, text, Snackbar.LENGTH_SHORT).show()
+                bookListViewModel.onSnackbarShown()
+            }
+        }
+
+        bookListViewModel.listBooks.observe(viewLifecycleOwner, { listBooks ->
+            Log.d(TAG, "Response received: ${listBooks[0]}")
+            updateUI(listBooks)
+        })
+
         return view
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        bookListViewModel.listBooks.observe(viewLifecycleOwner, { listBooks  ->
-            Log.d(TAG, "Response received: ${listBooks[0].authors}")
-            updateUI(listBooks)
-        })
+//        bookListViewModel.listBooks.observe(viewLifecycleOwner, { listBooks ->
+//            Log.d(TAG, "Response received: ${listBooks[0]}")
+//            updateUI(listBooks)
+//        })
     }
     override fun onAttach(context: Context) {
         super.onAttach(context)
