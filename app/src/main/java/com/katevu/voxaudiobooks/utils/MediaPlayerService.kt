@@ -76,7 +76,7 @@ class MediaPlayerService : Service(),
     private var notificationManager: NotificationManager? = null
     private var notificationChannel: NotificationChannel? = null
 
-    private val mListeners: List<OnMediaPlayerServiceListener> = ArrayList()
+    private val mListeners: MutableList<OnMediaPlayerServiceListener> = ArrayList<OnMediaPlayerServiceListener>()
 
 
     //AudioPlayer notification ID
@@ -107,17 +107,6 @@ class MediaPlayerService : Service(),
             //Could not gain focus
             stopSelf()
         }
-//        /**
-//         * Init
-//         */
-//        if (mediaSessionManager == null) {
-//            try {
-//                initMediaSession()
-//            } catch (e: RemoteException) {
-//                e.printStackTrace()
-//                stopSelf()
-//            }
-//        }
 
         // playing or pausing different audio and this is about to start a new audio
         if (action == null && mediaPlayer != null) {
@@ -155,6 +144,10 @@ class MediaPlayerService : Service(),
 
     override fun onCompletion(mMediaPlayer: MediaPlayer?) {
         stopMedia()
+        for (listener in mListeners) {
+            listener.onMediaComplete()
+        }
+        removeNotification()
         stopSelf()
     }
 
@@ -170,10 +163,14 @@ class MediaPlayerService : Service(),
             )
             MEDIA_ERROR_SERVER_DIED -> Log.d(
                 TAG,
-                "MediaPlayer Error MEDIA ERROR SERVER DIED $extra"
+                "MediaPlayer Error: MEDIA ERROR SERVER DIED $extra"
             )
-            MEDIA_ERROR_UNKNOWN -> Log.d(TAG, "MediaPlayer Error MEDIA ERROR UNKNOWN $extra")
+            MEDIA_ERROR_UNKNOWN -> Log.d(TAG, "MediaPlayer Error: MEDIA ERROR UNKNOWN $extra")
         }
+        for (listener in mListeners) {
+            listener.onMediaError(what, extra)
+        }
+
         return false
     }
 
@@ -185,9 +182,13 @@ class MediaPlayerService : Service(),
         return false
     }
 
-    override fun onBufferingUpdate(p0: MediaPlayer?, p1: Int) {
+    override fun onBufferingUpdate(mediaPlayer: MediaPlayer?, percent: Int) {
         //Invoked indicating buffering status of
         //a media resource being streamed over the network.
+        for (listener in mListeners) {
+            listener.onMediaBuffering(percent)
+        }
+
     }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
@@ -303,20 +304,43 @@ class MediaPlayerService : Service(),
                     super.onPlay()
                     resumeMedia()
                     buildNotification(PlaybackStatus.PLAYING)
+                    for (listener in mListeners) {
+                        listener.onMediaResume()
+                    }
                 }
 
                 override fun onPause() {
                     super.onPause()
                     pauseMedia()
                     buildNotification(PlaybackStatus.PAUSED)
-
+                    for (listener in mListeners) {
+                        listener.onMediaPause()
+                    }
                 }
 
                 override fun onStop() {
                     super.onStop()
                     removeNotification();
+                    for (listener in mListeners) {
+                        listener.onMediaStop()
+                    }
                     //Stop the service
                     stopSelf()
+                }
+
+                override fun onSkipToNext() {
+                    Log.d(TAG, "fun onSkipToNext called")
+                    super.onSkipToNext()
+                    for (listener in mListeners) {
+                        listener.onMediaSkipToNext()
+                    }
+                }
+
+                override fun onSkipToPrevious() {
+                    super.onSkipToPrevious()
+                    for (listener in mListeners) {
+                        listener.onMediaSkipToPrevious()
+                    }
                 }
 
                 override fun onSeekTo(position: Long) {
@@ -412,13 +436,13 @@ class MediaPlayerService : Service(),
                 return PendingIntent.getService(this, actionNumber, playbackAction, 0)
             }
             2 -> {
-                // Next track
-                playbackAction.action = ACTION_NEXT
+                // Previous track
+                playbackAction.action = ACTION_PREVIOUS
                 return PendingIntent.getService(this, actionNumber, playbackAction, 0)
             }
             3 -> {
-                // Previous track
-                playbackAction.action = ACTION_PREVIOUS
+                // Next track
+                playbackAction.action = ACTION_NEXT
                 return PendingIntent.getService(this, actionNumber, playbackAction, 0)
             }
             else -> {
@@ -469,7 +493,7 @@ class MediaPlayerService : Service(),
         PAUSED
     }
 
-    private fun buildNotification(playbackStatus: PlaybackStatus) {
+    fun buildNotification(playbackStatus: PlaybackStatus) {
         var notificationAction = R.drawable.ic_media_pause //needs to be initialized
         var play_pauseAction: PendingIntent? = null
 
@@ -498,9 +522,9 @@ class MediaPlayerService : Service(),
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSmallIcon(com.katevu.voxaudiobooks.R.drawable.earphone)
             // Add media control buttons that invoke
-            .addAction(android.R.drawable.ic_media_previous, "prev", playbackAction(2))
+            .addAction(R.drawable.ic_media_previous, "prev", playbackAction(2))
             .addAction(notificationAction, "Play/Pause", play_pauseAction) // #1
-            .addAction(android.R.drawable.ic_media_next, "next", playbackAction(3))
+            .addAction(R.drawable.ic_media_next, "next", playbackAction(3))
             .setStyle(
                 MediaNotificationCompat.MediaStyle()
                     .setMediaSession(mediaSession!!.sessionToken)
@@ -548,6 +572,8 @@ class MediaPlayerService : Service(),
             }
             actionString.equals(ACTION_NEXT, ignoreCase = true) -> {
                 transportControls!!.skipToNext()
+
+                Log.d(TAG, ".handleIncomingAction: skipToNext()")
             }
             actionString.equals(ACTION_PREVIOUS, ignoreCase = true) -> {
                 transportControls!!.skipToPrevious()
@@ -556,6 +582,10 @@ class MediaPlayerService : Service(),
                 transportControls!!.stop()
             }
         }
+    }
+
+    fun addListener(listener: OnMediaPlayerServiceListener) {
+        mListeners.add(listener)
     }
 
     interface OnMediaPlayerServiceListener {

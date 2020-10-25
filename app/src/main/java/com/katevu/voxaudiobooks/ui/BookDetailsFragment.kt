@@ -121,7 +121,7 @@ class BookDetailsFragment() : Fragment(),
     }
 
     override fun onItemClick(view: View?, position: Int) {
-        Log.d(TAG, "onItemClick called $view")
+        Log.d(TAG, "onItemClick called $position")
 
         val track = adapter.getTrack(position)
 
@@ -142,19 +142,23 @@ class BookDetailsFragment() : Fragment(),
                     bookDetailsViewModel.setTrack(mActiveTrack.trackUrl, mActiveTrack)
                 }
             }
+            //Pause a track
             AudioState().PLAYING -> {
                 if ((player != null) && (bookDetailsViewModel.mActiveTrack != null)) {
                     Log.d(TAG, ".Pause")
                     player?.pauseMedia()
+                    player?.buildNotification(MediaPlayerService.PlaybackStatus.PAUSED);
                     //setup audiStatus
                     track.playbackState = AudioState().PAUSE
                     bookDetailsViewModel.setTrack(track.trackUrl, track)
                 }
             }
+            //Replay a track
             AudioState().PAUSE -> {
                 if ((player != null) && (bookDetailsViewModel.mActiveTrack != null)) {
                     Log.d(TAG, ".Pause")
                     player?.resumeMedia()
+                    player?.buildNotification(MediaPlayerService.PlaybackStatus.PLAYING);
                     //setup audiStatus
                     track.playbackState = AudioState().PLAYING
                     bookDetailsViewModel.setTrack(track.trackUrl, track)
@@ -163,7 +167,6 @@ class BookDetailsFragment() : Fragment(),
         }
         bookDetailsViewModel.mActiveTrack = track
         adapter.notifyDataSetChanged()
-
     }
 
     private fun playAudio(track: Track) {
@@ -207,6 +210,8 @@ class BookDetailsFragment() : Fragment(),
             player = binder.getService()
             serviceBound = true
             Toast.makeText(context, "Service Bound", Toast.LENGTH_SHORT).show()
+            player?.addListener(this@BookDetailsFragment)
+
         }
 
         override fun onServiceDisconnected(name: ComponentName) {
@@ -246,7 +251,13 @@ class BookDetailsFragment() : Fragment(),
     }
 
     override fun onMediaSkipToNext() {
-        TODO("Not yet implemented")
+        Log.d(TAG, ".onMediaSkipToNext called")
+        if (bookDetailsViewModel.mActiveTrack != null) {
+            val position: Int = adapter.tracks.indexOf(bookDetailsViewModel.mActiveTrack)
+            if (position >= 0 && position < adapter.itemCount - 1) {
+                onItemClick(null,position + 1)
+            }
+        }
     }
 
     override fun onMediaPrepared() {
@@ -254,27 +265,66 @@ class BookDetailsFragment() : Fragment(),
     }
 
     override fun onMediaPause() {
-        TODO("Not yet implemented")
+//        Log.d(TAG, ".onMediaPause called")
+        if (bookDetailsViewModel.mActiveTrack != null) {
+            bookDetailsViewModel.mActiveTrack!!.playbackState = AudioState().PAUSE
+            bookDetailsViewModel.setTrack(
+                bookDetailsViewModel.mActiveTrack!!.trackUrl,
+                bookDetailsViewModel.mActiveTrack
+            )
+            adapter.notifyDataSetChanged()
+        }
     }
 
     override fun onMediaResume() {
-        TODO("Not yet implemented")
+//        Log.d(TAG, ".onMediaPause called")
+        if (bookDetailsViewModel.mActiveTrack != null) {
+            bookDetailsViewModel.mActiveTrack!!.playbackState = AudioState().PLAYING
+            bookDetailsViewModel.setTrack(
+                bookDetailsViewModel.mActiveTrack!!.trackUrl,
+                bookDetailsViewModel.mActiveTrack
+            )
+            adapter.notifyDataSetChanged()
+        }
     }
 
     override fun onMediaComplete() {
-        TODO("Not yet implemented")
+        if (bookDetailsViewModel.mActiveTrack != null) {
+            bookDetailsViewModel.mActiveTrack!!.playbackState = AudioState().IDLE
+            bookDetailsViewModel.setTrack(
+                bookDetailsViewModel.mActiveTrack!!.trackUrl,
+                bookDetailsViewModel.mActiveTrack
+            )
+            bookDetailsViewModel.mActiveTrack = null
+            adapter.notifyDataSetChanged()
+        }
     }
 
     override fun onMediaStop() {
-        TODO("Not yet implemented")
+        if (bookDetailsViewModel.mActiveTrack != null) {
+            bookDetailsViewModel.mActiveTrack!!.playbackState = AudioState().IDLE
+            bookDetailsViewModel.setTrack(
+                bookDetailsViewModel.mActiveTrack!!.trackUrl,
+                bookDetailsViewModel.mActiveTrack
+            )
+            bookDetailsViewModel.mActiveTrack = null
+            adapter.notifyDataSetChanged()
+        }
     }
 
     override fun onMediaBuffering(percent: Int) {
-        TODO("Not yet implemented")
     }
 
     override fun onMediaError(what: Int, extra: Int) {
-        TODO("Not yet implemented")
+        if (bookDetailsViewModel.mActiveTrack != null) {
+            bookDetailsViewModel.mActiveTrack!!.playbackState = AudioState().IDLE
+            bookDetailsViewModel.setTrack(
+                bookDetailsViewModel.mActiveTrack!!.trackUrl,
+                bookDetailsViewModel.mActiveTrack
+            )
+            bookDetailsViewModel.mActiveTrack = null
+            adapter.notifyDataSetChanged()
+        }
     }
 
 }

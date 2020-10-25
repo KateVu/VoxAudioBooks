@@ -77,7 +77,7 @@ class TrackListAdapter(var tracks: List<Track>) :
                             R.drawable.play_button_round
                         )
                     )
-                AudioState().IDLE ->
+                AudioState().PLAYING ->
                     playButton.setImageBitmap(
                         BitmapFactory.decodeResource(
                             itemView.context.resources,
