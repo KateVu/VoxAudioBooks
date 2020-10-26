@@ -18,7 +18,7 @@ class TrackListAdapter(var tracks: List<MediaFile>) :
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val layoutInflater = LayoutInflater.from(parent.context)
-        val view = layoutInflater.inflate(R.layout.list_item_track, parent, false)
+        val view = layoutInflater.inflate(R.layout.list_item_track2, parent, false)
         return TrackListHolder(view)
     }
 
@@ -45,7 +45,7 @@ class TrackListAdapter(var tracks: List<MediaFile>) :
         private val playButton = itemView.findViewById<ImageButton>(R.id.playButton)
         private val trackTitle = itemView.findViewById<TextView>(R.id.track_title)
         private val trackLength = itemView.findViewById<TextView>(R.id.track_length)
-        private val trackSize = itemView.findViewById<TextView>(R.id.track_size)
+        //private val trackSize = itemView.findViewById<TextView>(R.id.track_size)
 
         private lateinit var track: MediaFile
 
@@ -55,39 +55,40 @@ class TrackListAdapter(var tracks: List<MediaFile>) :
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         fun bind(track: MediaFile) {
             this.track = track
-            playButton.setImageBitmap(
-                BitmapFactory.decodeResource(
-                    itemView.context.resources,
-                    R.drawable.play_button_round
-                )
-            )
-
             when (track.playbackState) {
                 AudioState().IDLE ->
                     playButton.setImageBitmap(
                         BitmapFactory.decodeResource(
                             itemView.context.resources,
-                            R.drawable.app_icon
+                            R.drawable.audiobook
                         )
                     )
                 AudioState().PAUSE ->
                     playButton.setImageBitmap(
                         BitmapFactory.decodeResource(
                             itemView.context.resources,
-                            R.drawable.play_button_round
+                            R.drawable.icon_play
                         )
                     )
                 AudioState().PLAYING ->
                     playButton.setImageBitmap(
                         BitmapFactory.decodeResource(
                             itemView.context.resources,
-                            R.drawable.pause_button_round
+                            R.drawable.icon_pause
                         )
                     )
+
+                else -> playButton.setImageBitmap(
+                    BitmapFactory.decodeResource(
+                        itemView.context.resources,
+                        R.drawable.audiobook
+                    )
+                )
+
             }
             trackTitle.text = track.title
-            trackLength.text = getDurationString(track.length)
-            trackSize.text = getSize(track.size)
+            trackLength.text = getDurationString(track.length).plus("    ").plus(getSize(track.size))
+            //trackSize.text = getSize(track.size)
         }
     }
 
