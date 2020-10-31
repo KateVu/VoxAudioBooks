@@ -4,11 +4,6 @@ import android.os.Parcelable
 import com.google.gson.annotations.SerializedName
 import kotlinx.android.parcel.Parcelize
 
-data class BookDetails(
-    var bookID: String = "",
-    var listTracks: MutableList<Track> = ArrayList<Track>()
-)
-
 @Parcelize
 data class Track(
     var bookCover: String = "",

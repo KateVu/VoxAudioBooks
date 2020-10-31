@@ -6,14 +6,19 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.katevu.voxaudiobooks.api.NetworkService
+import com.katevu.voxaudiobooks.api.NetworkServiceSearch
+import com.katevu.voxaudiobooks.api.URL_SEARCH_FORMAT
+import com.katevu.voxaudiobooks.databases.BookRepository
 import kotlinx.coroutines.launch
 
-class BookListViewModel : ViewModel() {
+class BookListViewModel internal constructor(
+): ViewModel() {
 
     private val TAG = "BookListViewModel"
+    private val bookRepository: BookRepository = BookRepository.get()
 
-    private val _listBooks = MutableLiveData<List<Book>>()
-    val listBooks: LiveData<List<Book>>
+    private var _listBooks = MutableLiveData<List<BookParcel>>()
+    val listBooks: LiveData<List<BookParcel>>
         get() = _listBooks
 
     private val _spinner = MutableLiveData<Boolean>(false)
@@ -38,28 +43,81 @@ class BookListViewModel : ViewModel() {
         _snackbar.value = null
     }
 
-
     init {
         _spinner.value = true
         allBooks()
+        //queryBooks("Tom")
     }
 
+    /**
+     * Get Librovox collection book
+     */
     fun allBooks() {
         viewModelScope.launch {
             try {
                 val fetchResult = NetworkService().voxBooksService.getAllBooks()
-                Log.d(TAG, "Raw data received: $fetchResult")
-                _listBooks.value = fetchResult.channel?.items?.filterNot {
+//                Log.d(TAG, "Raw data received: $fetchResult")
+                val result = fetchResult.channel?.items?.filterNot {
                     it.link.isBlank()
                     it.guid.isBlank()
                 }
+                val resultParcel = result?.map {
+                        v -> BookParcel(v.guid,v.title,v.description,v.link,v.pubDate,v.creator,v.identifier,v.runtime,v.totalTracks, isFavourite(v.identifier))
+                }
+//                Log.d(TAG, "Data from internet: $resultParcel}")
+                resultParcel?.let {
+                    _listBooks.value = resultParcel
+                }
                 _spinner.value = false
             } catch (e: Exception) {
-                Log.d(TAG, ".allBooks error: ${e.message}")
+//                Log.d(TAG, ".allBooks error: ${e.message}")
+                _listBooks.value = null
                 _snackbar.value = "Cannot load the data!!!"
             }
         }
     }
 
+    /**
+     * Check if the book book is in Favourite list
+     */
+    suspend fun isFavourite (identifier: String):Boolean {
+        val book = bookRepository.getBookDB(identifier)
+        return (book != null)
+    }
 
+    /**
+     * Get book from search query
+     */
+    fun queryBooks(query: String) {
+        _listBooks.value = emptyList()
+        //        query = String.format(URL_SEARCH_FORMAT, query);
+        val queryValue = String.format(URL_SEARCH_FORMAT, query)
+        Log.d(TAG, ".query Books url: ${queryValue}")
+
+        viewModelScope.launch {
+            try {
+                val fetchResult = NetworkServiceSearch().searchBooksService.getQueryBooks(queryValue)
+                Log.d(TAG, "Raw data received: $fetchResult")
+                val result = fetchResult.channel?.items?.filterNot {
+                    it.link.isBlank()
+                    it.guid.isBlank()
+                }
+
+                val resultParcel = result?.map {
+                    v -> BookParcel(v.guid,v.title,v.description,v.link,v.pubDate,v.creator,v.identifier,v.runtime,v.totalTracks, isFavourite(v.identifier))
+                }
+
+                Log.d(TAG, "Data from internet: $resultParcel}")
+                resultParcel?.let {
+                    _listBooks.value = resultParcel
+                }
+                _spinner.value = false
+            } catch (e: Exception) {
+                _spinner.value = false
+                Log.d(TAG, ".query Books error: ${e.message}")
+                _snackbar.value = "Cannot load the search data!!!"
+            }
+        }
+        Log.d(TAG, ".queryBooks result: ${listBooks.value}")
+    }
 }

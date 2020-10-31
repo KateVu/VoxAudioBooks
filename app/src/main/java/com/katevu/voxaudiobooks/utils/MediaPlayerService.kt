@@ -21,6 +21,8 @@ import android.os.RemoteException
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.MediaSessionCompat
+import android.telephony.PhoneStateListener
+import android.telephony.TelephonyManager
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
@@ -47,8 +49,12 @@ private const val NOTIFICATION_ID = 8888
 private const val CHANNEL_ID = "com.katevu.voxaudiobooks.channel.main"
 private const val URL_AUDIO_LIBRIVOX = "https://archive.org/download/"
 
-
 private const val TAG = "MediaPlayerService"
+
+//Handle incoming phone calls
+private var ongoingCall = false
+private var phoneStateListener: PhoneStateListener? = null
+private var telephonyManager: TelephonyManager? = null
 
 class MediaPlayerService : Service(),
     OnCompletionListener,
@@ -138,7 +144,10 @@ class MediaPlayerService : Service(),
 
     override fun onCreate() {
         super.onCreate()
+        //init notificationManager
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        //setup callstateListener
+        setupCallStateListener()
     }
 
     override fun onCompletion(mMediaPlayer: MediaPlayer?) {
@@ -151,7 +160,11 @@ class MediaPlayerService : Service(),
     }
 
     override fun onPrepared(mediaPlayer: MediaPlayer?) {
-        playMedia()
+
+            for (listener in mListeners) {
+                listener.onMediaPrepared()
+            }
+            playMedia()
     }
 
     override fun onError(mp: MediaPlayer, what: Int, extra: Int): Boolean {
@@ -226,6 +239,12 @@ class MediaPlayerService : Service(),
             mediaPlayer?.release()
         }
         removeAudioFocus();
+
+        //unregister phone state listener
+        if (phoneStateListener != null) {
+            telephonyManager?.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE)
+        }
+
     }
 
     private fun requestAudioFocus(): Boolean {
@@ -359,29 +378,37 @@ class MediaPlayerService : Service(),
             getResources(),
             R.drawable.ic_media_play
         )
-        mediaSession?.setMetadata(
-            MediaMetadataCompat.Builder()
-                // Title.
-                .putString(MediaMetadata.METADATA_KEY_TITLE, track.title)
-                // Artist.
-                // Could also be the channel name or TV series.
-                .putString(MediaMetadata.METADATA_KEY_ARTIST, track.artist)
-                .putString(
-                    MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
-                    URL_COVER_LARGE_PREFIX.plus(track.identifier)
-                )
-                // Duration.
-                // If duration isn't set, such as for live broadcasts, then the progress
-                // indicator won't be shown on the seekbar.
-                .putLong(
-                    MediaMetadata.METADATA_KEY_DURATION,
-                    getDurationLong(track.length)
-                )
-                .build()
-        )
+        mediaSession?.apply {
+            setMetadata(
+                MediaMetadataCompat.Builder()
+                    // Title.
+                    .putString(MediaMetadata.METADATA_KEY_TITLE, track.title)
+                    // Artist.
+                    // Could also be the channel name or TV series.
+                    .putString(MediaMetadata.METADATA_KEY_ARTIST, track.artist)
+                    .putString(
+                        MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
+                        URL_COVER_LARGE_PREFIX.plus(track.identifier)
+                    )
+                    // Duration.
+                    // If duration isn't set, such as for live broadcasts, then the progress
+                    // indicator won't be shown on the seekbar.
+                    .putLong(
+                        MediaMetadata.METADATA_KEY_DURATION,
+                        getDurationLong(track.length)
+                    )
+                    .build()
+            )
+        }
+
+
+
     }
 
-
+    /**
+     * @duration: track.length: String
+     * return long type for input updateMetadata
+     */
     fun getDurationLong(duration: String): Long {
 //        Log.d(TAG, ".getDurationString called")
         var result: Long = 0
@@ -394,19 +421,10 @@ class MediaPlayerService : Service(),
         return result
     }
 
-    fun getmTimeLong(duration: String): Long {
-//        Log.d(TAG, ".getDurationString called")
-        var result: Long = 0
-        try {
-            val durationValue = duration.toDouble().toLong()
-        } catch (e: NumberFormatException) {
-//            Log.d(TAG, ".getDurationString catch error")
-            result = 0
-        }
-        return result
-    }
-
-
+    /**
+     * create notification channel
+     * is input for buildNotification fun
+     */
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannel() {
         if (notificationChannel == null) {
@@ -419,22 +437,21 @@ class MediaPlayerService : Service(),
             notificationChannel!!.setShowBadge(false)
             notificationChannel!!.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC)
             notificationManager!!.createNotificationChannel(notificationChannel!!)
-
-//            notificationChannel.enableLights(true)
-//            notificationChannel.lightColor = Color.RED
-//            notificationChannel.enableVibration(true)
-//            notificationChannel.description = "VoxAudioBooks Notification channel"
-//            notificationManager.createNotificationChannel(notificationChannel)
         }
     }
 
-
-    private fun removeNotification() {
+    /**
+     * remove notification when finished or distroy
+     */
+    fun removeNotification() {
         val notificationManager: NotificationManager =
             getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(NOTIFICATION_ID)
     }
 
+    /**
+     * Handle action put in notification
+     */
     private fun playbackAction(actionNumber: Int): PendingIntent? {
         val playbackAction = Intent(this, MediaPlayerService::class.java)
         when (actionNumber) {
@@ -466,7 +483,6 @@ class MediaPlayerService : Service(),
         }
         return null
     }
-
 
     fun playMedia() {
         if (!mediaPlayer!!.isPlaying) {
@@ -508,6 +524,9 @@ class MediaPlayerService : Service(),
         PAUSED
     }
 
+    /**
+     * Build notification
+     */
     fun buildNotification(playbackStatus: PlaybackStatus) {
         var notificationAction = R.drawable.ic_media_pause //needs to be initialized
         var play_pauseAction: PendingIntent? = null
@@ -599,6 +618,35 @@ class MediaPlayerService : Service(),
         }
     }
 
+    /**
+     * Handle incomming phone call
+     */
+    private fun setupCallStateListener() {
+        // Get the telephony manager
+        telephonyManager = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
+        //Init PhoneStateListener object
+        phoneStateListener = object : PhoneStateListener() {
+            override fun onCallStateChanged(state: Int, phoneNumber: String) {
+                when (state) {
+                    TelephonyManager.CALL_STATE_OFFHOOK, TelephonyManager.CALL_STATE_RINGING -> if (mediaPlayer != null) {
+                        pauseMedia()
+                        ongoingCall = true
+                    }
+                    TelephonyManager.CALL_STATE_IDLE ->
+                        if (mediaPlayer != null) {
+                            if (ongoingCall) {
+                                ongoingCall = false
+                                resumeMedia()
+                            }
+                        }
+                }
+            }
+        }
+        //register PhoneStateListener to telemphony manager
+        telephonyManager!!.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE)
+    }
+
+    //add listener to notify fragment when there is action in MediaSession object
     fun addListener(listener: OnMediaPlayerServiceListener) {
         mListeners.add(listener)
     }
@@ -616,6 +664,4 @@ class MediaPlayerService : Service(),
         fun onMediaBuffering(percent: Int)
         fun onMediaError(what: Int, extra: Int)
     }
-
-
 }

@@ -1,19 +1,20 @@
 package com.katevu.voxaudiobooks.ui
 
+import android.graphics.BitmapFactory
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.katevu.voxaudiobooks.R
-import com.katevu.voxaudiobooks.models.Book
 import com.katevu.voxaudiobooks.models.BookParcel
 import com.squareup.picasso.Picasso
 
 private const val TAG = "BookListAdapter"
-class BookListAdapter(var books: List<Book>) :
+class BookListAdapter(var books: List<BookParcel>) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -33,22 +34,10 @@ class BookListAdapter(var books: List<Book>) :
     }
 
     fun getBook(position: Int): BookParcel? {
-        if (books.isNotEmpty()) {
-            val book = books[position]
-            return BookParcel(
-                book.guid,
-                book.title,
-                book.description,
-                book.link,
-                book.pubDate,
-                book?.creator,
-                book.identifier,
-                book?.runtime,
-                book.totalTracks,
-                book.tracks
-            )
+        return if (books.isNotEmpty()) {
+            books[position]
         } else {
-            return null
+            null
         }
     }
 
@@ -56,16 +45,17 @@ class BookListAdapter(var books: List<Book>) :
      * BookListHolder
      */
     private inner class BookListHolder(view: View) : RecyclerView.ViewHolder(view) {
-        private lateinit var book: Book
+        private lateinit var book: BookParcel
         private val bookTitle = itemView.findViewById<TextView>(R.id.title)
         private val bookDes = itemView.findViewById<TextView>(R.id.description)
         private val bookTime = itemView.findViewById<TextView>(R.id.total_time)
         private val bookThumbnail = itemView.findViewById<ImageView>(R.id.thumbnail)
+        private val bookFavourite = itemView.findViewById<ImageButton>(R.id.buttonFavourite)
 
         /**
          * Binding data
          */
-        fun bind(book: Book) {
+        fun bind(book: BookParcel) {
             this.book = book
             bookTitle.text = this.book.title
             bookDes.text = this.book.description
@@ -78,6 +68,12 @@ class BookListAdapter(var books: List<Book>) :
                 .error(R.drawable.placeholder_image_icon_48dp)
                 .placeholder(R.drawable.placeholder_image_icon_48dp)
                 .into(bookThumbnail)
+
+            if (this.book.isFavourite) {
+                bookFavourite.setImageBitmap(BitmapFactory.decodeResource(itemView.context.resources, R.drawable.favourite))
+            } else {
+                bookFavourite.setImageBitmap(BitmapFactory.decodeResource(itemView.context.resources, R.drawable.nofavourite))
+            }
         }
     }
 }

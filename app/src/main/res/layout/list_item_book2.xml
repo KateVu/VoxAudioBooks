@@ -55,4 +55,11 @@
             android:textAppearance="@style/TextAppearance.AppCompat.Small" />
     </LinearLayout>
 
+    <ImageButton
+        android:id="@+id/buttonFavourite"
+        android:layout_width="25dp"
+        android:layout_height="25dp"
+        android:scaleType="centerCrop"
+        android:background="@null"
+        android:src="@drawable/nofavourite" />
 </LinearLayout>

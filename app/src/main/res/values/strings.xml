@@ -1,7 +1,8 @@
 <resources>
-    <string name="app_name">Vox AudioBooks</string>
+    <string name="app_name">VOX AUDIO</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="imgage_des">Book Cover</string>
     <string name="play_button">Play</string>
+    <string name="action_search">Search</string>
 </resources>

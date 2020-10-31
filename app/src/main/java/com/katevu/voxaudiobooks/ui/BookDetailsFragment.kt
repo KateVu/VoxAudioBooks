@@ -5,16 +5,15 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.ProgressBar
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -30,16 +29,12 @@ import com.katevu.voxaudiobooks.utils.MediaPlayerService
 import com.katevu.voxaudiobooks.utils.MediaPlayerService.LocalBinder
 import com.ms.square.android.expandabletextview.ExpandableTextView
 import com.squareup.picasso.Picasso
-import kotlinx.android.synthetic.main.fragment_book_details.*
-
 private const val BOOK_PARCEL = "book_parcel"
 internal const val MEDIA = "media"
 
-private const val TEST = "https://archive.org/download"
 class BookDetailsFragment() : Fragment(),
     RecyclerItemClickListener.OnRecyclerClickListener,
-    MediaPlayerService.OnMediaPlayerServiceListener {
-    val Broadcast_PLAY_NEW_AUDIO = "com.katevu.voxaudiobooks.ui.PlayNewAudio"
+    MediaPlayerService.OnMediaPlayerServiceListener{
 
     private val TAG = "BookDetailsFragment"
 
@@ -47,7 +42,7 @@ class BookDetailsFragment() : Fragment(),
     private lateinit var trackRecyclerView: RecyclerView
     private lateinit var bookCover: ImageView
     private lateinit var bookTitle: TextView
-    //private lateinit var bookDescription: TextView
+    private lateinit var isFavourite: ImageButton
     private lateinit var bookAuthor: TextView
     private lateinit var expTv1: ExpandableTextView
 
@@ -80,8 +75,15 @@ class BookDetailsFragment() : Fragment(),
         //bookDescription = view.findViewById(R.id.book_details_description)
         bookAuthor = view.findViewById(R.id.book_details_author)
         expTv1 = view.findViewById(R.id.expand_text_view)
+        isFavourite = view.findViewById(R.id.buttonFavourite)
 
         updateUI(bookParcel)
+        isFavourite.setOnClickListener {
+            bookDetailsViewModel.updateFavourite(bookParcel)
+            bookParcel.isFavourite = !bookParcel.isFavourite
+            updateUI(bookParcel)
+        }
+
         val spinner = view.findViewById(R.id.spinnerDetails) as ProgressBar
         spinner.visibility= View.VISIBLE
 
@@ -107,23 +109,24 @@ class BookDetailsFragment() : Fragment(),
             }
         }
 
-
-//        bookDetailsViewModel.bookDetails.observe(viewLifecycleOwner, { book ->
-//            Log.d(TAG, "Book Details: $book")
-//            adapter = TrackListAdapter(book.listTracks)
-//            trackRecyclerView.adapter = adapter
-//        })
-
         bookDetailsViewModel.audioBook.observe(viewLifecycleOwner, { audio ->
-            Log.d(TAG, "Book Details: $audio")
-            book_details_author.text = when {
-                ((audio != null) && (audio.metadata != null) && (!audio.metadata!!.creator.isNullOrBlank())) -> "by ".plus(
-                    audio?.metadata?.creator
-                )
-                else -> ""
+            if (audio != null) {
+                Log.d(TAG, "Book Details: $audio")
+                bookAuthor.text = when {
+                    ((audio.metadata != null) && !audio.metadata!!.creator.isNullOrBlank()) -> "by ".plus(
+                        audio?.metadata?.creator
+                    )
+                    else -> ""
+                }
+                adapter = TrackListAdapter(audio.mediaFiles)
+                trackRecyclerView.adapter = adapter
+            } else {
+                Toast.makeText(context, "THERE IS NO DATA AT THE MOMENT!!!", Toast.LENGTH_LONG)
+                    .apply {
+                        setGravity(Gravity.CENTER, 0, 0)
+                        show()
+                    }
             }
-            adapter = TrackListAdapter(audio.mediaFiles)
-            trackRecyclerView.adapter = adapter
         })
 
         return view
@@ -147,86 +150,17 @@ class BookDetailsFragment() : Fragment(),
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
+    override fun onDestroyView() {
+        super.onDestroyView()
 
         if (serviceBound) {
             activity?.unbindService(serviceConnection)
             //service is active
+            player?.removeNotification()
             player?.stopSelf()
         }
-    }
-
-    override fun onItemClick(view: View?, position: Int) {
-        Log.d(TAG, "onItemClick called $position")
-
-        val track = adapter.getTrack(position)
-
-        if (track != null) {
-            when (track?.playbackState) {
-                //Play a new track
-                AudioState().IDLE -> {
-                    //Play audio
-//                Log.d(TAG, ".onClick called with track identifier: ${track.identifier}, track name: ${track.name}")
-                    track?.let { playAudio(it) }
-                    //update status of the new track
-                    track.playbackState = AudioState().PLAYING
-                    bookDetailsViewModel.setAudioStatus(track.name, track)
-                    //update status of pending track
-                    val mActiveTrack = bookDetailsViewModel.mActiveTrack
-                    if (mActiveTrack != null) {
-                        mActiveTrack.playbackState = AudioState().IDLE
-                        bookDetailsViewModel.setAudioStatus(mActiveTrack.name, mActiveTrack)
-                    }
-                }
-                //Pause a track
-                AudioState().PLAYING -> {
-                    if ((player != null) && (bookDetailsViewModel.mActiveTrack != null)) {
-                        Log.d(TAG, ".Pause")
-                        player?.pauseMedia()
-                        player?.buildNotification(MediaPlayerService.PlaybackStatus.PAUSED);
-                        //setup audiStatus
-                        track.playbackState = AudioState().PAUSE
-                        bookDetailsViewModel.setAudioStatus(track.name, track)
-                    }
-                }
-                //Replay a track
-                AudioState().PAUSE -> {
-                    if ((player != null) && (bookDetailsViewModel.mActiveTrack != null)) {
-                        Log.d(TAG, ".Pause")
-                        player?.resumeMedia()
-                        player?.buildNotification(MediaPlayerService.PlaybackStatus.PLAYING);
-                        //setup audiStatus
-                        track.playbackState = AudioState().PLAYING
-                        bookDetailsViewModel.setAudioStatus(track.name, track)
-                    }
-                }
-            }
-            bookDetailsViewModel.mActiveTrack = track
-            adapter.notifyDataSetChanged()
-
-        } else {
-            Toast.makeText(context, "Sorry, some error happen", Toast.LENGTH_LONG).show()
-        }
 
     }
-
-    private fun playAudio(track: MediaFile) {
-        //Check is service is active
-//            Log.d(TAG, ".playAudio called")
-            val playerIntent = Intent(context, MediaPlayerService::class.java)
-            playerIntent.apply {
-                track.identifier = bookParcel.identifier
-                putExtra(MEDIA, track)
-            }
-
-        Log.d(TAG, "playAudio called with track: $track")
-            activity?.startService(playerIntent)
-        if (!serviceBound) {
-            activity?.bindService(playerIntent, serviceConnection, Context.BIND_AUTO_CREATE)
-        }
-    }
-
 
     @SuppressLint("SetTextI18n")
     private fun updateUI(bookParcel: BookParcel) {
@@ -240,6 +174,20 @@ class BookDetailsFragment() : Fragment(),
             .error(drawable.placeholder_image_icon_48dp)
             .placeholder(drawable.placeholder_image_icon_48dp)
             .into(bookCover)
+
+        if (bookParcel.isFavourite) {
+            isFavourite.setImageBitmap(
+                BitmapFactory.decodeResource(
+                    context?.resources,
+                    R.drawable.favourite
+                )
+            )
+        } else isFavourite.setImageBitmap(
+            BitmapFactory.decodeResource(
+                context?.resources,
+                R.drawable.nofavourite
+            )
+        )
     }
 
     //Binding this Client to the AudioPlayer Service
@@ -259,6 +207,197 @@ class BookDetailsFragment() : Fragment(),
         }
     }
 
+    override fun onItemClick(view: View?, position: Int) {
+        Log.d(TAG, "onItemClick called $position")
+
+        val track = adapter.getTrack(position)
+
+        if (track != null) {
+            when (track.playbackState) {
+                //Play a new track
+                AudioState().IDLE -> {
+//                Log.d(TAG, ".onClick called with track identifier: ${track.identifier}, track name: ${track.name}")
+                    //play the audio
+                    playAudio(track)
+                    //set status for pending file
+                    if (bookDetailsViewModel.mPendingTrack != null) {
+                        bookDetailsViewModel.mPendingTrack!!.playbackState = AudioState().IDLE
+                    }
+                    bookDetailsViewModel.mPendingTrack = track
+                    track.playbackState = AudioState().PLAYING
+                }
+                //Pause a track
+                AudioState().PLAYING -> {
+                    if ((player != null) && (bookDetailsViewModel.mActiveTrack != null)) {
+                        Log.d(TAG, ".Pause")
+                        player?.pauseMedia()
+                        player?.buildNotification(MediaPlayerService.PlaybackStatus.PAUSED);
+                        //setup audiStatus
+                        track.playbackState = AudioState().PAUSE
+                    }
+                }
+                //Replay a track
+                AudioState().PAUSE -> {
+                    if ((player != null) && (bookDetailsViewModel.mActiveTrack != null)) {
+                        Log.d(TAG, ".Pause")
+                        player?.resumeMedia()
+                        player?.buildNotification(MediaPlayerService.PlaybackStatus.PLAYING);
+                        //setup audioStatus
+                        track.playbackState = AudioState().PLAYING
+                    }
+                }
+            }
+            //Update UI
+            adapter.notifyDataSetChanged()
+
+        } else {
+            Toast.makeText(context, "Sorry, some error happen", Toast.LENGTH_LONG).show()
+        }
+
+    }
+
+    /**
+     * Send Intent to MediaPlayerService with an object of MediaFile
+     */
+    private fun playAudio(track: MediaFile) {
+//            Log.d(TAG, ".playAudio called")
+            val playerIntent = Intent(context, MediaPlayerService::class.java)
+            playerIntent.apply {
+                track.identifier = bookParcel.identifier
+                putExtra(MEDIA, track)
+            }
+
+        Log.d(TAG, "playAudio called with track: $track")
+            activity?.startService(playerIntent)
+        //Check is service is active
+        if (!serviceBound) {
+            activity?.bindService(playerIntent, serviceConnection, Context.BIND_AUTO_CREATE)
+        }
+    }
+
+    /**
+     * MediaSession notifies a new media palyer
+     */
+    override fun onMediaStartNew() {
+        if (bookDetailsViewModel.mActiveTrack != null) {
+            //Update status of new playing file
+            bookDetailsViewModel.mActiveTrack!!.playbackState = AudioState().IDLE
+            bookDetailsViewModel.mActiveTrack = null
+            adapter.notifyDataSetChanged()
+        }
+    }
+
+
+    override fun onMediaPlay() {
+    }
+
+    /**
+     * Notification object notifies to skip to next audio file
+     */
+    override fun onMediaSkipToPrevious() {
+        if (bookDetailsViewModel.mActiveTrack != null) {
+            val position: Int = adapter.tracks.indexOf(bookDetailsViewModel.mActiveTrack)
+            if (position > 0) { onItemClick(null, position - 1) }
+        }
+    }
+
+    /**
+     * Notification object notifies to skip to previous audio file
+     */
+    override fun onMediaSkipToNext() {
+        Log.d(TAG, ".onMediaSkipToNext called")
+        if (bookDetailsViewModel.mActiveTrack != null) {
+            val position: Int = adapter.tracks.indexOf(bookDetailsViewModel.mActiveTrack)
+            if (position >= 0 && position < adapter.itemCount - 1) {
+                onItemClick(null, position + 1)
+            }
+        }
+    }
+
+    /**
+     * MedioSession object is about to play a media file
+     * update new ActiveTrack = PendingTrack
+     * set PendingTrack = null
+     */
+    override fun onMediaPrepared() {
+        if (bookDetailsViewModel.mPendingTrack != null) {
+            bookDetailsViewModel.mActiveTrack = bookDetailsViewModel.mPendingTrack
+            bookDetailsViewModel.mPendingTrack = null
+        }
+    }
+
+    /**
+     * MediaSession notifies onPause
+     * update status of ActiveTrack
+     * update UI
+     */
+    override fun onMediaPause() {
+//        Log.d(TAG, ".onMediaPause called")
+        if (bookDetailsViewModel.mActiveTrack != null) {
+            bookDetailsViewModel.mActiveTrack!!.playbackState = AudioState().PAUSE
+            adapter.notifyDataSetChanged()
+        }
+    }
+
+    /**
+     * MediaSession notifies onResume
+     * update status of ActiveTrack
+     * update UI
+     */
+    override fun onMediaResume() {
+//        Log.d(TAG, ".onMediaPause called")
+        if (bookDetailsViewModel.mActiveTrack != null) {
+            bookDetailsViewModel.mActiveTrack!!.playbackState = AudioState().PLAYING
+            adapter.notifyDataSetChanged()
+        }
+    }
+
+    /**
+     * MediaSession notifies onComplete
+     * reset ActiveTrack, PendingTrack to null
+     * update UI
+     */
+    override fun onMediaComplete() {
+        if (bookDetailsViewModel.mActiveTrack != null) {
+            bookDetailsViewModel.mActiveTrack!!.playbackState = AudioState().IDLE
+            bookDetailsViewModel.mActiveTrack = null
+            bookDetailsViewModel.mPendingTrack = null
+            adapter.notifyDataSetChanged()
+        }
+
+    }
+
+    /**
+     * MediaSession notifies onStop
+     * reset ActiveTrack, PendingTrack to null
+     * update UI
+     */
+    override fun onMediaStop() {
+        if (bookDetailsViewModel.mActiveTrack != null) {
+            bookDetailsViewModel.mActiveTrack!!.playbackState = AudioState().IDLE
+            bookDetailsViewModel.mActiveTrack = null
+            bookDetailsViewModel.mPendingTrack = null
+            adapter.notifyDataSetChanged()
+        }
+    }
+
+    override fun onMediaBuffering(percent: Int) {
+    }
+
+    /**
+     * MediaSession notifies onError
+     * update ActiveTrack if notNull
+     * reset ActiveTrack, PendingTrack to null
+     * update UI
+     */
+    override fun onMediaError(what: Int, extra: Int) {
+        if (bookDetailsViewModel.mActiveTrack != null) {
+            bookDetailsViewModel.mActiveTrack!!.playbackState = AudioState().IDLE
+            bookDetailsViewModel.mActiveTrack = null
+            bookDetailsViewModel.mPendingTrack = null
+            adapter.notifyDataSetChanged()
+        }
+    }
 
     companion object {
         fun newInstance(bookParcel: BookParcel): BookDetailsFragment {
@@ -270,101 +409,4 @@ class BookDetailsFragment() : Fragment(),
             }
         }
     }
-
-    override fun onMediaStartNew() {
-        if (bookDetailsViewModel.mActiveTrack != null) {
-            bookDetailsViewModel?.mActiveTrack!!.playbackState = AudioState().PLAYING
-            bookDetailsViewModel?.mActiveTrack = null
-            adapter.notifyDataSetChanged()
-        }
-    }
-
-
-    override fun onMediaPlay() {
-    }
-
-    override fun onMediaSkipToPrevious() {
-        if (bookDetailsViewModel.mActiveTrack != null) {
-            val position: Int = adapter.tracks.indexOf(bookDetailsViewModel.mActiveTrack)
-            if (position > 0) { onItemClick(null, position - 1) }
-        }
-    }
-
-    override fun onMediaSkipToNext() {
-        Log.d(TAG, ".onMediaSkipToNext called")
-        if (bookDetailsViewModel.mActiveTrack != null) {
-            val position: Int = adapter.tracks.indexOf(bookDetailsViewModel.mActiveTrack)
-            if (position >= 0 && position < adapter.itemCount - 1) {
-                onItemClick(null, position + 1)
-            }
-        }
-    }
-
-    override fun onMediaPrepared() {
-        TODO("Not yet implemented")
-    }
-
-    override fun onMediaPause() {
-//        Log.d(TAG, ".onMediaPause called")
-        if (bookDetailsViewModel.mActiveTrack != null) {
-            bookDetailsViewModel.mActiveTrack!!.playbackState = AudioState().PAUSE
-            bookDetailsViewModel.setAudioStatus(
-                bookDetailsViewModel.mActiveTrack!!.name,
-                bookDetailsViewModel.mActiveTrack
-            )
-            adapter.notifyDataSetChanged()
-        }
-    }
-
-    override fun onMediaResume() {
-//        Log.d(TAG, ".onMediaPause called")
-        if (bookDetailsViewModel.mActiveTrack != null) {
-            bookDetailsViewModel.mActiveTrack!!.playbackState = AudioState().PLAYING
-            bookDetailsViewModel.setAudioStatus(
-                bookDetailsViewModel.mActiveTrack!!.name,
-                bookDetailsViewModel.mActiveTrack
-            )
-            adapter.notifyDataSetChanged()
-        }
-    }
-
-    override fun onMediaComplete() {
-        if (bookDetailsViewModel.mActiveTrack != null) {
-            bookDetailsViewModel.mActiveTrack!!.playbackState = AudioState().IDLE
-            bookDetailsViewModel.setAudioStatus(
-                bookDetailsViewModel.mActiveTrack!!.name,
-                bookDetailsViewModel.mActiveTrack
-            )
-            bookDetailsViewModel.mActiveTrack = null
-            adapter.notifyDataSetChanged()
-        }
-    }
-
-    override fun onMediaStop() {
-        if (bookDetailsViewModel.mActiveTrack != null) {
-            bookDetailsViewModel.mActiveTrack!!.playbackState = AudioState().IDLE
-            bookDetailsViewModel.setAudioStatus(
-                bookDetailsViewModel.mActiveTrack!!.name,
-                bookDetailsViewModel.mActiveTrack
-            )
-            bookDetailsViewModel.mActiveTrack = null
-            adapter.notifyDataSetChanged()
-        }
-    }
-
-    override fun onMediaBuffering(percent: Int) {
-    }
-
-    override fun onMediaError(what: Int, extra: Int) {
-        if (bookDetailsViewModel.mActiveTrack != null) {
-            bookDetailsViewModel.mActiveTrack!!.playbackState = AudioState().IDLE
-            bookDetailsViewModel.setAudioStatus(
-                bookDetailsViewModel.mActiveTrack!!.name,
-                bookDetailsViewModel.mActiveTrack
-            )
-            bookDetailsViewModel.mActiveTrack = null
-            adapter.notifyDataSetChanged()
-        }
-    }
-
 }

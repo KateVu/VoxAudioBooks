@@ -6,24 +6,23 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.katevu.voxaudiobooks.api.NetworkServiceAudio
-import com.katevu.voxaudiobooks.api.NetworkServiceDetails
+import com.katevu.voxaudiobooks.databases.BookRepository
 import com.katevu.voxaudiobooks.utils.AudioState
 import kotlinx.coroutines.launch
 
 class BookDetailsViewModel: ViewModel() {
     private val TAG = "BookDetailsViewModel"
 
-    private var _bookDetails = MutableLiveData<BookDetails>()
-    val bookDetails: LiveData<BookDetails>
-        get() = _bookDetails
+    private val bookRepository: BookRepository = BookRepository.get()
 
     private var _audioBook = MutableLiveData<Audio>()
     val audioBook: LiveData<Audio>
         get() = _audioBook
 
-
+    //active track
     var mActiveTrack: MediaFile? = null
-    var mPendingPending: Track? = null
+    var mPendingTrack: MediaFile? = null
+
 
     private val _spinner = MutableLiveData<Boolean>(false)
     /**
@@ -51,6 +50,28 @@ class BookDetailsViewModel: ViewModel() {
         _snackbar.value = null
     }
 
+    fun updateFavourite(book: BookParcel) {
+        bookRepository.getBookDB2(book.identifier)
+        viewModelScope.launch {
+//            Log.d(TAG, ".updateFavourite: delete")
+            val bookResult = bookRepository.getBookDB(book.identifier)
+            val isFavourite = (bookResult != null)
+            if (isFavourite) {
+//                Log.d(TAG, ".updateFavourite: delete")
+                bookRepository.deleteBook(book)
+            } else {
+                Log.d(TAG, ".updateFavourite: add")
+                bookRepository.addBook(book)
+            }
+        }
+    }
+
+
+    /**
+     * Get list of audio files of a book
+     * @param: identifier: ID of the book
+     * @return: List<MediaFile>, assigned to _audioBook.value
+     */
     fun getAudio(identifier: String) {
 //        Log.d(TAG, ".getBook called with baseurl: $urlText and query: $urlDetails")
         viewModelScope.launch {
@@ -74,54 +95,5 @@ class BookDetailsViewModel: ViewModel() {
                 Log.d(TAG, ".getBook error: ${e.message}")
             }
         }
-    }
-
-    fun setAudioStatus(name: String, newTrack: MediaFile?): Boolean {
-        val index = getTrackIndex(name)
-        index?.let {
-            newTrack?.let {
-                    it1 -> _audioBook.value?.mediaFiles?.set(it, it1)
-                return true
-            }
-        }
-        return false
-    }
-
-    fun getMediaFileIndex(name: String): Int? {
-        return  _audioBook.value?.mediaFiles?.indexOfFirst { it.name == name }
-    }
-
-    fun getBook(urlText: String,urlDetails: String) {
-//        Log.d(TAG, ".getBook called with baseurl: $urlText and query: $urlDetails")
-        viewModelScope.launch {
-            try {
-
-                var result = NetworkServiceDetails(urlText).voxBookService.getBookDetails(urlDetails)
-//                Log.d(TAG, ".getBook call result: $result")
-                var parseXml = ParseXML()
-                if (parseXml.parse(result)) {
-                    var resultXML = parseXml.book
-//                    Log.d(TAG, "getBook called: $resultXML")
-                    _bookDetails.value = resultXML
-                    _spinner.value = false
-                } else {
-                    _bookDetails.value = null
-                    _snackbar.value = "Cannot load the data!!!"
-                }
-            } catch (e: Exception) {
-                _snackbar.value = "Cannot load the data!!!"
-                Log.d(TAG, ".getBook error: ${e.message}")
-            }
-        }
-    }
-
-
-    fun getTrackIndex(trackUrl: String): Int? {
-        return  _bookDetails.value?.listTracks?.indexOfFirst { it.trackUrl == trackUrl }
-    }
-
-    fun setTrack(trackUrl: String, newTrack: Track?) {
-        val index = getTrackIndex(trackUrl)
-        index?.let { newTrack?.let { it1 -> bookDetails.value?.listTracks?.set(it, it1) } }
     }
 }
