@@ -13,7 +13,8 @@ Implemeting interface and mediaSession.CallBack to update infor from the UI to t
 ## Images of the app
 ### List of audio books
 
-<img src="https://github.com/KateVu/VoxAudioBooks/blob/master/images/ListBook.png" width="200"> <img src="https://github.com/KateVu/VoxAudioBooks/blob/master/images/ListBook_Dark.png" width="200">
+<kbd>
+<img src="https://github.com/KateVu/VoxAudioBooks/blob/master/images/ListBook.png" width="200"></kbd>  <kbd><img src="https://github.com/KateVu/VoxAudioBooks/blob/master/images/ListBook_Dark.png" width="200"></kbd>
 
 ### Favourite screen
 
