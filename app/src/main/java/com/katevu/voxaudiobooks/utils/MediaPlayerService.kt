@@ -1,11 +1,13 @@
 package com.katevu.voxaudiobooks.utils
 
+/**
+ * Author: Kate Vu
+ */
 import android.R
 import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.AudioAttributes
 import android.media.AudioManager
@@ -161,10 +163,10 @@ class MediaPlayerService : Service(),
 
     override fun onPrepared(mediaPlayer: MediaPlayer?) {
 
-            for (listener in mListeners) {
-                listener.onMediaPrepared()
-            }
-            playMedia()
+        for (listener in mListeners) {
+            listener.onMediaPrepared()
+        }
+        playMedia()
     }
 
     override fun onError(mp: MediaPlayer, what: Int, extra: Int): Boolean {
@@ -218,28 +220,40 @@ class MediaPlayerService : Service(),
             }
             AudioManager.AUDIOFOCUS_LOSS -> {
                 // Lost focus for an unbounded amount of time: stop playback and release media player
-                if (mediaPlayer!!.isPlaying) mediaPlayer!!.stop()
-                mediaPlayer!!.release()
-                mediaPlayer = null
+                Log.d(TAG, ".AUDIOFOCUS_LOSS")
+                if (mediaPlayer != null) {
+                    stopMedia()
+                    mediaPlayer!!.reset()
+                    mediaPlayer!!.release()
+                    mediaPlayer = null
+                    removeNotification()
+                    for (listener in mListeners) {
+                        listener.onMediaStop()
+                    }
+                }
             }
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ->             // Lost focus for a short time, but we have to stop
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                Log.d(TAG, ".AUDIOFOCUS_LOSS_TRANSIENT")
+                // Lost focus for a short time, but we have to stop
                 // playback. We don't release the media player because playback
                 // is likely to resume
                 if (mediaPlayer!!.isPlaying) mediaPlayer!!.pause()
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK ->             // Lost focus for a short time, but it's ok to keep playing
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK ->  {
+                Log.d(TAG, ".AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK")
+                // Lost focus for a short time, but it's ok to keep playing
                 // at an attenuated level
                 if (mediaPlayer!!.isPlaying) mediaPlayer!!.setVolume(0.1f, 0.1f)
+            }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        if (mediaPlayer != null) {
-            stopMedia();
+            stopMedia()
             mediaPlayer?.release()
-        }
-        removeAudioFocus();
-
+        removeAudioFocus()
+        removeNotification()
         //unregister phone state listener
         if (phoneStateListener != null) {
             telephonyManager?.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE)
@@ -303,11 +317,11 @@ class MediaPlayerService : Service(),
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     @Throws(RemoteException::class)
     private fun initMediaSession() {
-        Log.d(TAG, ".initMediaSession called")
+//        Log.d(TAG, ".initMediaSession called")
         if (mediaSessionManager != null) {
-            Log.d(TAG, "mediaSessionManager exists")
+//            Log.d(TAG, "mediaSessionManager exists")
         } else {
-            Log.d(TAG, "create mediaSession")
+//            Log.d(TAG, "create mediaSession")
 
             mediaSessionManager = getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
             //
@@ -331,6 +345,7 @@ class MediaPlayerService : Service(),
 
                 override fun onPause() {
                     super.onPause()
+                    Log.d(TAG, ".Pause called")
                     pauseMedia()
                     buildNotification(PlaybackStatus.PAUSED)
                     for (listener in mListeners) {
@@ -339,8 +354,9 @@ class MediaPlayerService : Service(),
                 }
 
                 override fun onStop() {
+                    Log.d(TAG, ".onStop called")
                     super.onStop()
-                    removeNotification();
+                    removeNotification()
                     for (listener in mListeners) {
                         listener.onMediaStop()
                     }
@@ -367,24 +383,20 @@ class MediaPlayerService : Service(),
                     super.onSeekTo(position)
                 }
             })
-            if (mediaSession != null) {
-                Log.d(TAG, "create mediaSession successfull")
-            }
+//            if (mediaSession != null) {
+////                Log.d(TAG, "create mediaSession successfull")
+//            }
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     private fun updateMetaData() {
-        val artwork: Bitmap = BitmapFactory.decodeResource(
-            getResources(),
-            R.drawable.ic_media_play
-        )
         mediaSession?.apply {
             setMetadata(
                 MediaMetadataCompat.Builder()
                     // Title.
                     .putString(MediaMetadata.METADATA_KEY_TITLE, track.title)
                     // Artist.
-                    // Could also be the channel name or TV series.
                     .putString(MediaMetadata.METADATA_KEY_ARTIST, track.artist)
                     .putString(
                         MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
@@ -402,23 +414,20 @@ class MediaPlayerService : Service(),
         }
 
 
-
     }
 
     /**
      * @duration: track.length: String
      * return long type for input updateMetadata
      */
-    fun getDurationLong(duration: String): Long {
+    private fun getDurationLong(duration: String): Long {
 //        Log.d(TAG, ".getDurationString called")
-        var result: Long = 0
-        try {
-            val durationValue = duration.toDouble().toLong()
+        return try {
+            duration.toDouble().toLong()
         } catch (e: NumberFormatException) {
-//            Log.d(TAG, ".getDurationString catch error")
-            result = 0
+    //            Log.d(TAG, ".getDurationString catch error")
+            0
         }
-        return result
     }
 
     /**
@@ -433,9 +442,9 @@ class MediaPlayerService : Service(),
                 "VoxAudioBooks",
                 NotificationManager.IMPORTANCE_HIGH
             )
-            notificationChannel!!.setDescription("Media Playback Controls")
+            notificationChannel!!.description = "Media Playback Controls"
             notificationChannel!!.setShowBadge(false)
-            notificationChannel!!.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC)
+            notificationChannel!!.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             notificationManager!!.createNotificationChannel(notificationChannel!!)
         }
     }
@@ -444,9 +453,7 @@ class MediaPlayerService : Service(),
      * remove notification when finished or distroy
      */
     fun removeNotification() {
-        val notificationManager: NotificationManager =
-            getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.cancel(NOTIFICATION_ID)
+        notificationManager?.cancel(NOTIFICATION_ID)
     }
 
     /**
@@ -484,15 +491,17 @@ class MediaPlayerService : Service(),
         return null
     }
 
-    fun playMedia() {
+    private fun playMedia() {
         if (!mediaPlayer!!.isPlaying) {
             mediaPlayer!!.start()
         }
     }
 
-    fun stopMedia() {
-        if ((mediaPlayer != null) && (mediaPlayer!!.isPlaying)) {
-            mediaPlayer!!.stop()
+    private fun stopMedia() {
+        if (mediaPlayer != null) {
+            if (mediaPlayer!!.isPlaying) {
+                mediaPlayer!!.stop()
+            }
         }
     }
 
@@ -526,21 +535,23 @@ class MediaPlayerService : Service(),
 
     /**
      * Build notification
+     * @paramL playbackStatus: PAUSE or PLAYING
      */
+    @SuppressLint("DefaultLocale")
     fun buildNotification(playbackStatus: PlaybackStatus) {
         var notificationAction = R.drawable.ic_media_pause //needs to be initialized
-        var play_pauseAction: PendingIntent? = null
+        var playOrPauseAction: PendingIntent? = null
 
         //Build a new notification according to the current state of the MediaPlayer
         if (playbackStatus == PlaybackStatus.PLAYING) {
-            Log.d(TAG, ".buildNotification called with playBackStatus: $playbackStatus")
+//            Log.d(TAG, ".buildNotification called with playBackStatus: $playbackStatus")
             notificationAction = R.drawable.ic_media_pause
             //create the pause action
-            play_pauseAction = playbackAction(1)
+            playOrPauseAction = playbackAction(1)
         } else if (playbackStatus == PlaybackStatus.PAUSED) {
             notificationAction = R.drawable.ic_media_play
             //create the play action
-            play_pauseAction = playbackAction(0)
+            playOrPauseAction = playbackAction(0)
         }
 
         //Create channel
@@ -549,7 +560,6 @@ class MediaPlayerService : Service(),
         }
 
         // Build the notification
-//        Log.d(TAG, "mediaSessnToken: ${mediaSession!!.getSessionToken()}")
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             // Show controls on lock screen even when user hides sensitive content.
             .setShowWhen(false)
@@ -557,7 +567,7 @@ class MediaPlayerService : Service(),
             .setSmallIcon(com.katevu.voxaudiobooks.R.drawable.earphone)
             // Add media control buttons that invoke
             .addAction(R.drawable.ic_media_previous, "prev", playbackAction(2))
-            .addAction(notificationAction, "Play/Pause", play_pauseAction) // #1
+            .addAction(notificationAction, "Play/Pause", playOrPauseAction) // #1
             .addAction(R.drawable.ic_media_next, "next", playbackAction(3))
             .setStyle(
                 MediaNotificationCompat.MediaStyle()
@@ -565,14 +575,13 @@ class MediaPlayerService : Service(),
             )
             .setContentTitle(track.title.toUpperCase())
             .setContentText(track.artist)
-            //.setLargeIcon(Picasso.get().load(linkCover).)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
         applyImageUrl(notification, URL_COVER_LARGE_PREFIX.plus(track.identifier))
         notificationManager!!.notify(NOTIFICATION_ID, notification.build())
 
     }
 
-    fun applyImageUrl(
+    private fun applyImageUrl(
         builder: NotificationCompat.Builder,
         imageUrl: String
     ) = runBlocking {
@@ -586,11 +595,6 @@ class MediaPlayerService : Service(),
             }
         }?.let { bitmap ->
             builder.setLargeIcon(bitmap)
-//            val palette: Palette = Palette.from(bitmap).generate()
-//            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-//                builder.setColor(palette.getDominantColor(Color.BLACK))
-//                    .setColorized(true)
-//            }
         }
     }
 

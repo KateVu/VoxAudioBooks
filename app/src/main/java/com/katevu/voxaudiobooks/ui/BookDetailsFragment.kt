@@ -1,5 +1,8 @@
 package com.katevu.voxaudiobooks.ui
 
+/**
+ * Author: Kate Vu
+ */
 import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
@@ -29,12 +32,13 @@ import com.katevu.voxaudiobooks.utils.MediaPlayerService
 import com.katevu.voxaudiobooks.utils.MediaPlayerService.LocalBinder
 import com.ms.square.android.expandabletextview.ExpandableTextView
 import com.squareup.picasso.Picasso
+
 private const val BOOK_PARCEL = "book_parcel"
 internal const val MEDIA = "media"
 
 class BookDetailsFragment() : Fragment(),
     RecyclerItemClickListener.OnRecyclerClickListener,
-    MediaPlayerService.OnMediaPlayerServiceListener{
+    MediaPlayerService.OnMediaPlayerServiceListener {
 
     private val TAG = "BookDetailsFragment"
 
@@ -85,7 +89,7 @@ class BookDetailsFragment() : Fragment(),
         }
 
         val spinner = view.findViewById(R.id.spinnerDetails) as ProgressBar
-        spinner.visibility= View.VISIBLE
+        spinner.visibility = View.VISIBLE
 
         trackRecyclerView = view.findViewById(R.id.track_recycler_view) as RecyclerView
         trackRecyclerView.layoutManager = LinearLayoutManager(context)
@@ -261,14 +265,14 @@ class BookDetailsFragment() : Fragment(),
      */
     private fun playAudio(track: MediaFile) {
 //            Log.d(TAG, ".playAudio called")
-            val playerIntent = Intent(context, MediaPlayerService::class.java)
-            playerIntent.apply {
-                track.identifier = bookParcel.identifier
-                putExtra(MEDIA, track)
-            }
+        val playerIntent = Intent(context, MediaPlayerService::class.java)
+        playerIntent.apply {
+            track.identifier = bookParcel.identifier
+            putExtra(MEDIA, track)
+        }
 
         Log.d(TAG, "playAudio called with track: $track")
-            activity?.startService(playerIntent)
+        activity?.startService(playerIntent)
         //Check is service is active
         if (!serviceBound) {
             activity?.bindService(playerIntent, serviceConnection, Context.BIND_AUTO_CREATE)
@@ -297,7 +301,9 @@ class BookDetailsFragment() : Fragment(),
     override fun onMediaSkipToPrevious() {
         if (bookDetailsViewModel.mActiveTrack != null) {
             val position: Int = adapter.tracks.indexOf(bookDetailsViewModel.mActiveTrack)
-            if (position > 0) { onItemClick(null, position - 1) }
+            if (position > 0) {
+                onItemClick(null, position - 1)
+            }
         }
     }
 

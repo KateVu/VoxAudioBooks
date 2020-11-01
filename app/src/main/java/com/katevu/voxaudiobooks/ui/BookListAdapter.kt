@@ -1,7 +1,9 @@
 package com.katevu.voxaudiobooks.ui
 
+/**
+ * Author: Kate Vu
+ */
 import android.graphics.BitmapFactory
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -62,7 +64,7 @@ class BookListAdapter(var books: List<BookParcel>) :
             bookTime.text = this.book.pubDate
 
             val linkImage = URL_COVER_LARGE_PREFIX.plus(book.identifier)
-            Log.d(TAG, "Cover image: $linkImage")
+//            Log.d(TAG, "Cover image: $linkImage")
             Picasso.get()
                 .load(linkImage)
                 .error(R.drawable.placeholder_image_icon_48dp)

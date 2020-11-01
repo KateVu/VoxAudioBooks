@@ -1,5 +1,8 @@
 package com.katevu.voxaudiobooks.ui
 
+/**
+ * Author: Kate Vu
+ */
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.view.LayoutInflater
@@ -87,8 +90,8 @@ class TrackListAdapter(var tracks: List<MediaFile>) :
 
             }
             trackTitle.text = track.title
-            trackLength.text = getDurationString(track.length).plus("    ").plus(getSize(track.size))
-            //trackSize.text = getSize(track.size)
+            trackLength.text =
+                getDurationString(track.length).plus("    ").plus(getSize(track.size))
         }
     }
 

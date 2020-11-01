@@ -1,5 +1,8 @@
 package com.katevu.voxaudiobooks.models
 
+/**
+ * Author: Kate Vu
+ */
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -10,9 +13,9 @@ import com.katevu.voxaudiobooks.databases.BookRepository
  */
 class BookFavouriteViewModel internal constructor(
 
-): ViewModel() {
+) : ViewModel() {
 
-//    private val TAG = "BookFragmentViewModel"
+    //    private val TAG = "BookFragmentViewModel"
     private val bookRepository: BookRepository = BookRepository.get()
 
     private var _listBooks = bookRepository.getBooksDB()
@@ -20,6 +23,7 @@ class BookFavouriteViewModel internal constructor(
         get() = _listBooks
 
     private val _spinner = MutableLiveData<Boolean>(false)
+
     /**
      * Show a loading spinner if true
      */

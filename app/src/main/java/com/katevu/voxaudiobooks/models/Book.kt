@@ -1,5 +1,8 @@
 package com.katevu.voxaudiobooks.models
 
+/**
+ * Author: Kate Vu
+ */
 import android.os.Parcelable
 import androidx.room.Entity
 import androidx.room.PrimaryKey

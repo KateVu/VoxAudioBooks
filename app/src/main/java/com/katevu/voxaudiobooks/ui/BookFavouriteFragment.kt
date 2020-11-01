@@ -1,8 +1,10 @@
 package com.katevu.voxaudiobooks.ui
 
+/**
+ * Kate Vu
+ */
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -21,6 +23,7 @@ import com.katevu.voxaudiobooks.models.BookParcel
 class BookFavouriteFragment : Fragment(),
     RecyclerItemClickListener.OnRecyclerClickListener {
 
+    //send book back to MainActivity when onItemClick
     interface Callbacks {
         fun onBookSelected(bookParcel: BookParcel)
     }
@@ -30,21 +33,23 @@ class BookFavouriteFragment : Fragment(),
     private var adapter: BookListAdapter? = null
     private var callbacks: Callbacks? = null
 
-    private val bookFavouriteViewModel: BookFavouriteViewModel by lazy { ViewModelProvider(this).get(BookFavouriteViewModel::class.java) }
-
-    //private val bookFavouriteViewModel: BookFavouriteViewModel by viewModels()
+    private val bookFavouriteViewModel: BookFavouriteViewModel by lazy {
+        ViewModelProvider(this).get(
+            BookFavouriteViewModel::class.java
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setHasOptionsMenu(true)
-        Log.d(TAG, ".onCreate called")
+//        Log.d(TAG, ".onCreate called")
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        Log.d(TAG, ".onCreateView called")
+//        Log.d(TAG, ".onCreateView called")
         // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_bookfa_list, container, false)
 
@@ -80,14 +85,10 @@ class BookFavouriteFragment : Fragment(),
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        Log.d(TAG, ".onViewCreated called")
-//        bookListViewModel.listBooks.observe(viewLifecycleOwner, { listBooks ->
-//            Log.d(TAG, "Response received: ${listBooks[0]}")
-//            updateUI(listBooks)
-//        })
+//        Log.d(TAG, ".onViewCreated called")
         bookFavouriteViewModel.listBooks.observe(viewLifecycleOwner, { listBooks ->
             if (listBooks != null) {
-                Log.d(TAG, "onViewCreated: ${listBooks.size}")
+//                Log.d(TAG, "onViewCreated: ${listBooks.size}")
                 updateUI(listBooks)
             } else {
                 Toast.makeText(context, "THERE IS NO FAVOURITE BOOKS NOW!!!", Toast.LENGTH_LONG)
@@ -97,45 +98,22 @@ class BookFavouriteFragment : Fragment(),
                     }
             }
         })
-
-    }
-
-    override fun onStart() {
-        Log.d(TAG, ".onStart called")
-        super.onStart()
-    }
-
-    override fun onPause() {
-        Log.d(TAG, ".onPause called")
-        super.onPause()
-    }
-
-    override fun onResume() {
-        Log.d(TAG, ".onResume called")
-
-        super.onResume()
     }
 
     override fun onAttach(context: Context) {
-        Log.d(TAG, ".onAttach called")
-
+//        Log.d(TAG, ".onAttach called")
         super.onAttach(context)
         callbacks = context as Callbacks?
     }
 
     override fun onDetach() {
-        Log.d(TAG, ".onDetach called")
-
+//        Log.d(TAG, ".onDetach called")
         super.onDetach()
         callbacks = null
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-    }
-
     private fun updateUI(books: List<BookParcel>) {
-        Log.d(TAG, ".updateUI called")
+//        Log.d(TAG, ".updateUI called")
         adapter = BookListAdapter(books)
         bookRecyclerView.adapter = adapter
     }

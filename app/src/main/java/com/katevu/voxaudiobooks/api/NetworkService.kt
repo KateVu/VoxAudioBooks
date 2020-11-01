@@ -1,5 +1,8 @@
 package com.katevu.voxaudiobooks.api
 
+/**
+ * author: KateVu
+ */
 import com.katevu.voxaudiobooks.models.RSS
 import retrofit2.Retrofit
 import retrofit2.converter.simplexml.SimpleXmlConverterFactory
@@ -29,7 +32,7 @@ class NetworkService {
 }
 
 /**
- * A public Api object that exposes the lazy-initialized Retrofit service
+ * interface for book collection
  */
 interface VoxBooksService {
     @GET("collection-rss.php?collection=librivoxaudio")

@@ -1,5 +1,8 @@
 package com.katevu.voxaudiobooks.databases
 
+/**
+ * Author: Kate Vu
+ */
 import androidx.lifecycle.LiveData
 import androidx.room.*
 import com.katevu.voxaudiobooks.models.BookParcel
@@ -14,6 +17,10 @@ interface BookDao {
 
     @Query("SELECT * FROM books WHERE identifier = :identifier")
     suspend fun getBookDB(identifier: String): BookParcel?
+
+    @Query("SELECT * FROM books ORDER BY identifier")
+    suspend fun getBooksFavourite(): List<BookParcel>
+
 
     @Query("SELECT * FROM books WHERE identifier = :identifier")
     fun getBookDB2(identifier: String): LiveData<BookParcel?>

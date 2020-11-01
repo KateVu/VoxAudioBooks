@@ -1,5 +1,8 @@
 package com.katevu.voxaudiobooks.ui
 
+/**
+ * Author: KateVu
+ */
 import android.app.SearchManager
 import android.app.SearchableInfo
 import android.content.Context
@@ -39,8 +42,6 @@ class BookListFragment : Fragment(),
     private lateinit var bookRecyclerView: RecyclerView
     private var adapter: BookListAdapter? = null
     private var callbacks: Callbacks? = null
-
-//    private val bookListViewModel: bookListViewModel by lazy { ViewModelProvider(this).get(BookListViewModel::class.java) }
 
     private val bookListViewModel: BookListViewModel by viewModels()
 
@@ -88,19 +89,18 @@ class BookListFragment : Fragment(),
             }
         }
 
-        bookListViewModel.listBooks.observe(viewLifecycleOwner, { listBooks -> updateUI(listBooks) })
-
         return view
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-//        bookListViewModel.listBooks.observe(viewLifecycleOwner, { listBooks ->
-//            Log.d(TAG, "Response received: ${listBooks[0]}")
-//            updateUI(listBooks)
-//        })
-    }
 
+        bookListViewModel.allBooks()
+        bookListViewModel.listBooks.observe(
+            viewLifecycleOwner,
+            { listBooks -> updateUI(listBooks) })
+
+    }
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -128,13 +128,10 @@ class BookListFragment : Fragment(),
         val searchableInfo: SearchableInfo? =
             searchManager.getSearchableInfo(activity?.componentName)
         searchView?.setSearchableInfo(searchableInfo)
-//        Log.d(TAG, ".onCreateOptionsMenu: $componentName")
-//        Log.d(TAG, ".onCreateOptionsMenu: hint is ${searchView?.queryHint}")
-//        Log.d(TAG, ".onCreateOptionsMenu: $searchableInfo")
-
         searchView?.isIconified = false
         searchView?.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
+                adapter = BookListAdapter(emptyList())
                 Log.d(TAG, "setOnQueryTextListener called")
                 query?.let {
                     spinner.visibility = View.VISIBLE
@@ -160,7 +157,7 @@ class BookListFragment : Fragment(),
     }
 
     private fun updateUI(books: List<BookParcel>) {
-        Log.d(TAG, ".updateUI called")
+//        Log.d(TAG, ".updateUI called")
         adapter = BookListAdapter(books)
         bookRecyclerView.adapter = adapter
     }

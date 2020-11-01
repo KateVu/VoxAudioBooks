@@ -1,25 +1,28 @@
 package com.katevu.voxaudiobooks.ui
 
+/**
+ * Author: Kate Vu
+ */
 import android.os.Bundle
-import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.katevu.voxaudiobooks.R
 import com.katevu.voxaudiobooks.models.BookParcel
 import kotlinx.android.synthetic.main.activity_main.*
 
-class MainActivity : AppCompatActivity(), BookListFragment.Callbacks, BookFavouriteFragment.Callbacks {
+class MainActivity : AppCompatActivity(), BookListFragment.Callbacks,
+    BookFavouriteFragment.Callbacks {
     private val TAG = "MainActivity"
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         val isFragmentContainerEmpty = savedInstanceState == null
-        val firstFragment= BookListFragment.newInstance()
-        val secondFragment= BookFavouriteFragment.newInstance()
+        val firstFragment = BookListFragment.newInstance()
+        val secondFragment = BookFavouriteFragment.newInstance()
 
         if (isFragmentContainerEmpty) {
-            Log.d(TAG, "add PhotoGalleryFragment")
+//            Log.d(TAG, "add PhotoGalleryFragment")
             //val fragment = BookListFragment.newInstance()
             supportFragmentManager.beginTransaction()
                 .replace(R.id.fragment_container, firstFragment)
@@ -28,18 +31,18 @@ class MainActivity : AppCompatActivity(), BookListFragment.Callbacks, BookFavour
         }
 
         bottomNavigationView.setOnNavigationItemSelectedListener {
-            when(it.itemId){
-                R.id.books->setCurrentFragment(firstFragment)
-                R.id.favourite->setCurrentFragment(secondFragment)
+            when (it.itemId) {
+                R.id.books -> setCurrentFragment(firstFragment)
+                R.id.favourite -> setCurrentFragment(secondFragment)
             }
             true
         }
 
     }
 
-    private fun setCurrentFragment(fragment: Fragment)=
+    private fun setCurrentFragment(fragment: Fragment) =
         supportFragmentManager.beginTransaction().apply {
-            replace(R.id.fragment_container,fragment)
+            replace(R.id.fragment_container, fragment)
             //addToBackStack(null)
             commit()
         }
