@@ -18,9 +18,9 @@ Implemeting interface and mediaSession.CallBack to update infor from the UI to t
 
 ### Favourite screen
 
-<img src="https://github.com/KateVu/VoxAudioBooks/blob/master/images/Favourite.png" width="200">
+<kbd><img src="https://github.com/KateVu/VoxAudioBooks/blob/master/images/Favourite.png" width="200"></kbd>
 
 ### Details screen and media notification
 
-<img src="https://github.com/KateVu/VoxAudioBooks/blob/master/images/Detail.png" width="200"> <img src="https://github.com/KateVu/VoxAudioBooks/blob/master/images/Notification.png" width="200">
+<kbd><img src="https://github.com/KateVu/VoxAudioBooks/blob/master/images/Detail.png" width="200"></kbd> <kbd><img src="https://github.com/KateVu/VoxAudioBooks/blob/master/images/Notification.png" width="200"></kbd>
 
